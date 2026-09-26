@@ -1,0 +1,6 @@
+{
+  "name": "VASTHUSILPY Keralassery - Architectural Plans, 3D Designs & Client Vault",
+  "description": "Official architectural project portal for VASTHUSILPY Keralassery. Secure client folder vaults, 3D design renders, blueprints, QR visiting card generator, multi-modal client discussions, and Google Cloud Data Vault sync.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

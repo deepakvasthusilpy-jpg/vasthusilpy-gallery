@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Project folders and attachments
+    match /vasthusilpy_project_folders/{folderId} {
+      allow read, write: if true;
+    }
+    // Notifications
+    match /vasthusilpy_notifications/{notificationId} {
+      allow read, write: if true;
+    }
+  }
+}
