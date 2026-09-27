@@ -27,8 +27,10 @@ import {
 import { initGoogleDriveAuth } from '@/lib/googleDrive';
 import { COMPANY_INFO } from '@/lib/sample-data';
 import { Navbar } from '@/components/Navbar';
+import { HomePageTopSignIn } from '@/components/HomePageTopSignIn';
 import { HeroAutoCarousel } from '@/components/HeroAutoCarousel';
 import { HomePagePortfolio } from '@/components/HomePagePortfolio';
+import { PortfolioShowcaseSection } from '@/components/PortfolioShowcaseSection';
 import { ProjectDashboard } from '@/components/ProjectDashboard';
 import { AppSidebar, DashboardTab } from '@/components/AppSidebar';
 import { FilePreviewModal } from '@/components/FilePreviewModal';
@@ -61,7 +63,7 @@ export default function Home() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [session, setSession] = useState<AuthSession | null>(null);
   const [notifications, setNotifications] = useState<ActivityNotification[]>([]);
-  const [activeTab, setActiveTab] = useState<'folders' | 'services' | 'about'>('folders');
+  const [activeTab, setActiveTab] = useState<'folders' | 'portfolio' | 'services' | 'about'>('folders');
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('my-cloud');
 
   // Modals & Action States
@@ -187,7 +189,7 @@ export default function Home() {
     setSession(null);
     clearAuthSession();
     setIsGuestMode(false);
-    setIsGatewayLoginOpen(true);
+    setIsGatewayLoginOpen(false);
   };
 
   // Role Determination:
@@ -504,6 +506,18 @@ export default function Home() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#EEF4FB] dark:bg-[#0B1528]">
 
+          {/* TAB: PORTFOLIO CINEMA (5s Images, Full Video Duration, Custom Playlist) */}
+          {activeTab === 'portfolio' && (
+            <main className="w-full px-3 sm:px-6 lg:px-8 py-4">
+              <PortfolioShowcaseSection
+                folders={folders}
+                isAdmin={isAdmin}
+                onPreviewFile={(file) => setPreviewFile(file)}
+                onOpenClientLogin={() => handleOpenGateway('client')}
+              />
+            </main>
+          )}
+
           {/* TAB: SERVICES (From Top Nav) */}
           {activeTab === 'services' && (
             <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -560,6 +574,20 @@ export default function Home() {
               {/* Hero Banner (Top Animated Media Showcase when on My Cloud) */}
               {dashboardTab === 'my-cloud' && (
                 <div className="w-full px-3 sm:px-6 lg:px-8 pt-4 pb-4 space-y-6">
+                  {/* Embedded Top Sign-In Gateway directly on Home Page Top */}
+                  <HomePageTopSignIn
+                    session={session}
+                    folders={folders}
+                    onClientLoginSuccess={handleClientLoginSuccess}
+                    onAdminLoginSuccess={handleAdminLoginSuccess}
+                    onLogout={handleLogout}
+                    onExplorePublicShowcase={() => {
+                      const el = document.getElementById('public-portfolio-section');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  />
+
+                  {/* Top Full Screen 3D Images and Walkthrough Videos Animation */}
                   <HeroAutoCarousel
                     folders={folders}
                     isAdmin={isAdmin}
@@ -577,7 +605,7 @@ export default function Home() {
                   {/* Public View-Only Portfolio Section with Screen-Size Media Stream and Password Gated Download & Share */}
                   <div id="public-portfolio-section" className="w-full min-h-[90vh]">
                     <HomePagePortfolio
-                      folders={folders}
+                      folders={isClient ? visibleFolders : folders}
                       session={session}
                       isAdmin={isAdmin}
                       onPreviewFile={(file) => setPreviewFile(file)}

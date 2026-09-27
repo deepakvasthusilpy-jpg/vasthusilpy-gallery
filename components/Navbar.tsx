@@ -31,8 +31,8 @@ interface NavbarProps {
   onOpenAIAssistant?: () => void;
   notifications: ActivityNotification[];
   onClearNotifications?: () => void;
-  activeTab: 'folders' | 'services' | 'about';
-  setActiveTab: (tab: 'folders' | 'services' | 'about') => void;
+  activeTab: 'folders' | 'portfolio' | 'services' | 'about';
+  setActiveTab: (tab: 'folders' | 'portfolio' | 'services' | 'about') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -92,6 +92,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               Project Vaults
+            </button>
+            <button
+              onClick={() => setActiveTab('portfolio')}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === 'portfolio'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span>Portfolio</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] animate-pulse">
+                Auto 5s / Video
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('services')}
@@ -277,18 +290,26 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Mobile Dropdown Nav */}
         {mobileMenuOpen && (
           <div className="md:hidden py-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               <button
                 onClick={() => { setActiveTab('folders'); setMobileMenuOpen(false); }}
-                className={`p-2 rounded-lg text-xs font-semibold text-center ${
+                className={`p-2 rounded-lg text-[11px] font-semibold text-center ${
                   activeTab === 'folders' ? 'bg-red-600 text-white' : 'bg-slate-100 dark:bg-slate-800'
                 }`}
               >
-                Project Vaults
+                Vaults
+              </button>
+              <button
+                onClick={() => { setActiveTab('portfolio'); setMobileMenuOpen(false); }}
+                className={`p-2 rounded-lg text-[11px] font-semibold text-center ${
+                  activeTab === 'portfolio' ? 'bg-red-600 text-white' : 'bg-slate-100 dark:bg-slate-800'
+                }`}
+              >
+                Portfolio
               </button>
               <button
                 onClick={() => { setActiveTab('services'); setMobileMenuOpen(false); }}
-                className={`p-2 rounded-lg text-xs font-semibold text-center ${
+                className={`p-2 rounded-lg text-[11px] font-semibold text-center ${
                   activeTab === 'services' ? 'bg-red-600 text-white' : 'bg-slate-100 dark:bg-slate-800'
                 }`}
               >
@@ -296,11 +317,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
               <button
                 onClick={() => { setActiveTab('about'); setMobileMenuOpen(false); }}
-                className={`p-2 rounded-lg text-xs font-semibold text-center ${
+                className={`p-2 rounded-lg text-[11px] font-semibold text-center ${
                   activeTab === 'about' ? 'bg-red-600 text-white' : 'bg-slate-100 dark:bg-slate-800'
                 }`}
               >
-                Company Info
+                About
               </button>
             </div>
 
