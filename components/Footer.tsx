@@ -66,7 +66,7 @@ export const Footer: React.FC<FooterProps> = ({
               </li>
               <li>
                 <button onClick={onOpenDataVault} className="hover:text-blue-400 transition">
-                  • &quot;VASTHUSILPY - DATA VAULT&quot; Sync
+                  • Google Drive Backup (&quot;VasthuWeb&quot;)
                 </button>
               </li>
               <li>

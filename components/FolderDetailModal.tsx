@@ -50,6 +50,7 @@ interface FolderDetailModalProps {
   isAdmin: boolean;
   onClose: () => void;
   onUploadFile: (folderId: string, fileData: Omit<ProjectFile, 'id' | 'uploadedAt'>) => Promise<void>;
+  onUploadBatchFiles?: (folderId: string, files: Array<Omit<ProjectFile, 'id' | 'uploadedAt'>>) => Promise<void>;
   onUpdateFile?: (folderId: string, fileId: string, updates: Partial<ProjectFile>) => Promise<void>;
   onDeleteFile: (folderId: string, fileId: string) => Promise<void>;
   onEditFolder?: (folder: ProjectFolder) => void;
@@ -68,6 +69,7 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
   isAdmin,
   onClose,
   onUploadFile,
+  onUploadBatchFiles,
   onUpdateFile,
   onDeleteFile,
   onEditFolder,
@@ -277,25 +279,36 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
         category = 'CAD Drawing';
       }
 
+      // Generate instant object URL for 0ms preview
+      const objectUrl = URL.createObjectURL(file);
+      const newQueueId = 'up_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+
+      setUploadQueue((prev) => {
+        const hasCover = prev.some((item) => item.isCover);
+        return [
+          ...prev,
+          {
+            id: newQueueId,
+            name: file.name,
+            type: detectedType,
+            category,
+            fileUrl: objectUrl,
+            fileSize: sizeStr,
+            description: '',
+            isCover: !hasCover && isImg
+          }
+        ];
+      });
+
+      // Also read as data URL asynchronously
       const reader = new FileReader();
       reader.onload = (ev) => {
         const resultUrl = (ev.target?.result as string) || '';
-        setUploadQueue((prev) => {
-          const hasCover = prev.some((item) => item.isCover);
-          return [
-            ...prev,
-            {
-              id: 'up_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-              name: file.name,
-              type: detectedType,
-              category,
-              fileUrl: resultUrl,
-              fileSize: sizeStr,
-              description: '',
-              isCover: !hasCover && isImg
-            }
-          ];
-        });
+        if (resultUrl) {
+          setUploadQueue((prev) =>
+            prev.map((item) => (item.id === newQueueId ? { ...item, fileUrl: resultUrl } : item))
+          );
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -307,24 +320,29 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
   const handleBatchUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (uploadQueue.length === 0) return;
-    setIsUploading(true);
 
-    for (const item of uploadQueue) {
-      await onUploadFile(folder.id, {
-        name: item.name,
-        type: item.type,
-        category: item.category,
-        fileUrl: item.fileUrl,
-        fileSize: item.fileSize,
-        uploadedBy: isAdmin ? 'Admin (Vasthusilpy)' : folder.clientName,
-        description: item.description,
-        isCover: item.isCover
-      });
-    }
+    const filesToUpload = uploadQueue.map((item) => ({
+      name: item.name,
+      type: item.type,
+      category: item.category,
+      fileUrl: item.fileUrl,
+      fileSize: item.fileSize,
+      uploadedBy: isAdmin ? 'Admin (Vasthusilpy)' : folder.clientName,
+      description: item.description,
+      isCover: item.isCover
+    }));
 
-    setIsUploading(false);
+    // Instant modal close and state reset for 0ms user perceived wait
     setUploadQueue([]);
     setShowUploadModal(false);
+
+    if (onUploadBatchFiles) {
+      await onUploadBatchFiles(folder.id, filesToUpload);
+    } else {
+      for (const item of filesToUpload) {
+        await onUploadFile(folder.id, item);
+      }
+    }
   };
 
   // Handle Admin Reset Password
@@ -340,7 +358,7 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
   };
 
   const handleDownloadAll = () => {
-    const text = `VASTHUSILPY - PROJECT VAULT REPORT\n\nProject: ${folder.folderName}\nClient: ${folder.clientName} (${folder.clientMobile})\nStatus: ${folder.status}\n\nFiles List:\n` +
+    const text = `VASTHUSILPY - PROJECT VAULT REPORT\n\nProject: ${folder.folderName}\nClient: ${folder.clientName} (${folder.clientMobile})\n\nFiles List:\n` +
       folder.files.map((f, i) => `${i + 1}. [${f.category}] ${f.name} (${f.fileSize}) - ${f.fileUrl}`).join('\n');
     
     const element = document.createElement('a');
@@ -364,12 +382,14 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {folder.status}
-                </span>
                 <span className="text-[11px] font-mono text-slate-400">
                   {folder.files?.length || 0} Attachments
                 </span>
+                {folder.projectCategory && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-red-300 font-bold border border-slate-700">
+                    {folder.projectCategory}
+                  </span>
+                )}
               </div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-0.5">
                 {folder.folderName}
@@ -417,6 +437,19 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
               <QrCode className="w-4 h-4 text-red-400" />
               <span>Visiting Card</span>
             </button>
+
+            {folder.driveFolderUrl && (
+              <a
+                href={folder.driveFolderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-blue-600/40 hover:bg-blue-600 text-blue-100 hover:text-white text-xs font-semibold backdrop-blur-md border border-blue-400/40 transition flex items-center gap-1.5"
+                title="Open Project Folder in Google Drive"
+              >
+                <ExternalLink className="w-4 h-4 text-blue-300" />
+                <span>Drive Folder</span>
+              </a>
+            )}
 
             <button
               onClick={handleDownloadAll}
@@ -686,6 +719,18 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                           >
                             <Download className="w-3.5 h-3.5" />
                           </a>
+
+                          {file.driveWebViewLink && (
+                            <a
+                              href={file.driveWebViewLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
+                              title="Open in Google Drive"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
 
                           {isAdmin && (
                             <button

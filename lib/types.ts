@@ -9,6 +9,9 @@ export interface ProjectFile {
   category: string;
   description?: string;
   isCover?: boolean;
+  driveFileId?: string;
+  driveWebViewLink?: string;
+  driveDownloadLink?: string;
 }
 
 export interface FolderReview {
@@ -51,7 +54,7 @@ export interface ProjectFolder {
   projectCategory?: 'Building Plans' | '3D Design' | 'Vasthu Consultation' | 'Land Survey' | 'Valuation Certificate' | 'Building Permit' | 'Video Rendering Works' | 'Complete Villa Package' | string;
   projectLocation?: string;
   estimatedArea?: string;
-  status: 'In Progress' | 'Under Review' | 'Approved' | 'Completed' | 'Vasthu Verified';
+  status?: string;
   coverImageUrl?: string;
   notes?: string;
   createdAt: string;
@@ -62,6 +65,8 @@ export interface ProjectFolder {
   cardTheme?: 'monochrome-color-preview' | 'professional-corporate' | 'signature-red' | 'luxury-slate' | 'blueprint-cyan' | 'kerala-teak' | 'dark-gold';
   driveSynced?: boolean;
   driveSyncDate?: string;
+  driveFolderId?: string;
+  driveFolderUrl?: string;
 }
 
 export interface ActivityNotification {

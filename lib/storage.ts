@@ -9,6 +9,15 @@ import {
 } from 'firebase/firestore';
 import { ProjectFolder, ActivityNotification, DataVaultBackup, ProjectFile, FolderReview, FolderChatMessage } from './types';
 import { INITIAL_FOLDERS, INITIAL_NOTIFICATIONS, COMPANY_INFO } from './sample-data';
+import { 
+  getGoogleDriveAccessToken, 
+  uploadFileToGoogleDrive, 
+  getOrCreateRootVaultFolder, 
+  getOrCreateProjectDriveFolder, 
+  saveProjectJsonToDrive,
+  deleteFileFromGoogleDrive,
+  deleteFolderFromGoogleDrive
+} from './googleDrive';
 
 const FOLDERS_COLLECTION = 'vasthusilpy_project_folders';
 const NOTIFICATIONS_COLLECTION = 'vasthusilpy_notifications';
@@ -29,19 +38,6 @@ export interface AuthSession {
   loginTime: string;
 }
 
-// Helper to check if a folder is legacy mock data
-function isLegacyMockFolder(folder: any): boolean {
-  if (!folder) return true;
-  const id = String(folder.id || '');
-  const client = String(folder.clientName || '').toLowerCase();
-  const name = String(folder.folderName || '').toLowerCase();
-  
-  if (id.startsWith('fold-') || id.startsWith('sample') || id.includes('mock')) return true;
-  if (client.includes('arjun') || client.includes('radhakrishnan') || client.includes('suresh') || client.includes('meera') || client.includes('kavitha') || client.includes('sample')) return true;
-  if (name.includes('sample') || name.includes('demo') || name.includes('luxury villa - arjun')) return true;
-  return false;
-}
-
 // Load cached data from browser if present
 export function initializeStorage() {
   if (typeof window === 'undefined') return;
@@ -50,17 +46,8 @@ export function initializeStorage() {
     if (cached) {
       const parsed = JSON.parse(cached);
       if (Array.isArray(parsed)) {
-        // Purge mock folders from previous sessions
-        const clean = parsed.filter((f) => !isLegacyMockFolder(f));
-        memoryFolders = clean;
-        localStorage.setItem(LOCAL_STORAGE_KEY_FOLDERS, JSON.stringify(clean));
-      } else {
-        memoryFolders = [];
-        localStorage.setItem(LOCAL_STORAGE_KEY_FOLDERS, JSON.stringify([]));
+        memoryFolders = parsed;
       }
-    } else {
-      memoryFolders = [];
-      localStorage.setItem(LOCAL_STORAGE_KEY_FOLDERS, JSON.stringify([]));
     }
 
     const cachedNotifs = localStorage.getItem(LOCAL_STORAGE_KEY_NOTIFS);
@@ -69,8 +56,6 @@ export function initializeStorage() {
       if (Array.isArray(parsedNotifs)) {
         memoryNotifications = parsedNotifs;
       }
-    } else {
-      localStorage.setItem(LOCAL_STORAGE_KEY_NOTIFS, JSON.stringify(INITIAL_NOTIFICATIONS));
     }
   } catch (e) {
     console.warn('LocalStorage error:', e);
@@ -118,16 +103,15 @@ export async function getProjectFolders(): Promise<ProjectFolder[]> {
       const folders: ProjectFolder[] = [];
       snap.forEach((d) => {
         const data = d.data() as ProjectFolder;
-        // Clean out legacy mock folders
-        if (isLegacyMockFolder(data)) {
-          deleteDoc(doc(db, FOLDERS_COLLECTION, data.id || d.id)).catch(() => {});
-        } else {
+        if (data && data.id) {
           folders.push(data);
         }
       });
-      memoryFolders = folders;
-      persistLocal();
-      return folders;
+      if (folders.length > 0) {
+        memoryFolders = folders;
+        persistLocal();
+        return folders;
+      }
     }
   } catch (e) {
     console.warn('Firestore fetch fallback to memory:', e);
@@ -138,7 +122,9 @@ export async function getProjectFolders(): Promise<ProjectFolder[]> {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        memoryFolders = Array.isArray(parsed) ? parsed.filter((f) => !isLegacyMockFolder(f)) : [];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          memoryFolders = parsed;
+        }
       } catch (err) {}
     }
   }
@@ -158,15 +144,15 @@ export function subscribeToProjectFolders(callback: (folders: ProjectFolder[]) =
         const folders: ProjectFolder[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as ProjectFolder;
-          if (isLegacyMockFolder(data)) {
-            deleteDoc(doc(db, FOLDERS_COLLECTION, data.id || docSnap.id)).catch(() => {});
-          } else {
+          if (data && data.id) {
             folders.push(data);
           }
         });
-        memoryFolders = folders;
-        persistLocal();
-        callback(folders);
+        if (folders.length > 0 || snapshot.size === 0) {
+          memoryFolders = folders;
+          persistLocal();
+          callback(folders);
+        }
       },
       (error) => {
         console.warn('Snapshot listener error, using local state:', error);
@@ -235,6 +221,34 @@ export async function saveProjectFolder(folder: ProjectFolder): Promise<void> {
     console.warn('Firestore save error, saved locally:', err);
   }
 
+  // If Google Drive token is present, ensure root and project folder exist and save metadata snapshot
+  const driveToken = getGoogleDriveAccessToken();
+  if (driveToken) {
+    (async () => {
+      try {
+        const rootVault = await getOrCreateRootVaultFolder(driveToken);
+        const projectDrive = await getOrCreateProjectDriveFolder(driveToken, rootVault.id, folder);
+        if (folder.driveFolderId !== projectDrive.id || folder.driveFolderUrl !== projectDrive.webViewLink) {
+          folder.driveFolderId = projectDrive.id;
+          folder.driveFolderUrl = projectDrive.webViewLink;
+          folder.driveSynced = true;
+          folder.driveSyncDate = new Date().toISOString();
+          persistLocal();
+          const fRef = doc(db, FOLDERS_COLLECTION, folder.id);
+          await setDoc(fRef, { 
+            driveFolderId: projectDrive.id, 
+            driveFolderUrl: projectDrive.webViewLink,
+            driveSynced: true,
+            driveSyncDate: folder.driveSyncDate
+          }, { merge: true });
+        }
+        await saveProjectJsonToDrive(driveToken, projectDrive.id, folder);
+      } catch (driveErr) {
+        console.warn('Background Google Drive folder sync notice:', driveErr);
+      }
+    })();
+  }
+
   // Trigger sync notification
   await addNotification({
     folderId: folder.id,
@@ -271,6 +285,14 @@ export async function deleteProjectFolder(folderId: string): Promise<void> {
     console.warn('Firestore delete error, removed locally:', err);
   }
 
+  // Delete from Google Drive if synced and token available
+  const driveToken = getGoogleDriveAccessToken();
+  if (driveToken && target?.driveFolderId) {
+    deleteFolderFromGoogleDrive(driveToken, target.driveFolderId).catch((err) => {
+      console.warn('Drive folder delete error:', err);
+    });
+  }
+
   if (target) {
     await addNotification({
       folderId,
@@ -294,24 +316,119 @@ export async function addFileToFolder(folderId: string, file: Omit<ProjectFile, 
   const folder = memoryFolders.find((f) => f.id === folderId);
   if (folder) {
     if (newFile.isCover || !folder.coverImageUrl) {
-      if (newFile.fileUrl.startsWith('http') || newFile.fileUrl.startsWith('data:image')) {
+      if (newFile.fileUrl.startsWith('http') || newFile.fileUrl.startsWith('data:image') || newFile.fileUrl.startsWith('blob:')) {
         folder.coverImageUrl = newFile.fileUrl;
       }
     }
     folder.files = [newFile, ...folder.files];
-    await saveProjectFolder(folder);
+    saveProjectFolder(folder).catch(() => {});
 
-    await addNotification({
+    // If Google Drive token is present, upload file to project subfolder on Drive in detached promise
+    const driveToken = getGoogleDriveAccessToken();
+    if (driveToken) {
+      (async () => {
+        try {
+          const rootVault = await getOrCreateRootVaultFolder(driveToken);
+          const projectDrive = await getOrCreateProjectDriveFolder(driveToken, rootVault.id, folder);
+          const uploadRes = await uploadFileToGoogleDrive(
+            driveToken,
+            projectDrive.id,
+            newFile.name,
+            newFile.fileUrl,
+            newFile.category
+          );
+          newFile.driveFileId = uploadRes.id;
+          newFile.driveWebViewLink = uploadRes.webViewLink || `https://drive.google.com/file/d/${uploadRes.id}/view`;
+          newFile.driveDownloadLink = uploadRes.webContentLink;
+          folder.driveFolderId = projectDrive.id;
+          folder.driveFolderUrl = projectDrive.webViewLink;
+          folder.driveSynced = true;
+          folder.driveSyncDate = new Date().toISOString();
+          persistLocal();
+          const folderRef = doc(db, FOLDERS_COLLECTION, folder.id);
+          await setDoc(folderRef, folder, { merge: true });
+        } catch (e) {
+          console.warn('Background Google Drive upload notice:', e);
+        }
+      })();
+    }
+
+    addNotification({
       folderId: folder.id,
       folderName: folder.folderName,
       type: 'file_upload',
       title: `New File: ${newFile.name}`,
       description: `${newFile.category} uploaded to ${folder.folderName}.`,
       actor: newFile.uploadedBy
-    });
+    }).catch(() => {});
   }
 
   return newFile;
+}
+
+// Add batch files to a folder instantly
+export async function addBatchFilesToFolder(folderId: string, files: Array<Omit<ProjectFile, 'id' | 'uploadedAt'>>): Promise<ProjectFile[]> {
+  const folder = memoryFolders.find((f) => f.id === folderId);
+  if (!folder) return [];
+
+  const createdFiles: ProjectFile[] = files.map((file, idx) => ({
+    ...file,
+    id: 'f_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substring(2, 6),
+    uploadedAt: new Date().toISOString()
+  }));
+
+  const coverCandidate = createdFiles.find(f => f.isCover) || (!folder.coverImageUrl ? createdFiles.find(f => f.fileUrl.startsWith('http') || f.fileUrl.startsWith('data:image') || f.fileUrl.startsWith('blob:')) : undefined);
+  if (coverCandidate) {
+    folder.coverImageUrl = coverCandidate.fileUrl;
+  }
+
+  folder.files = [...createdFiles, ...folder.files];
+  saveProjectFolder(folder).catch(() => {});
+
+  // Background Google Drive Upload
+  const driveToken = getGoogleDriveAccessToken();
+  if (driveToken) {
+    (async () => {
+      try {
+        const rootVault = await getOrCreateRootVaultFolder(driveToken);
+        const projectDrive = await getOrCreateProjectDriveFolder(driveToken, rootVault.id, folder);
+        for (const f of createdFiles) {
+          try {
+            const uploadRes = await uploadFileToGoogleDrive(
+              driveToken,
+              projectDrive.id,
+              f.name,
+              f.fileUrl,
+              f.category
+            );
+            f.driveFileId = uploadRes.id;
+            f.driveWebViewLink = uploadRes.webViewLink || `https://drive.google.com/file/d/${uploadRes.id}/view`;
+            f.driveDownloadLink = uploadRes.webContentLink;
+          } catch (itemErr) {}
+        }
+        folder.driveFolderId = projectDrive.id;
+        folder.driveFolderUrl = projectDrive.webViewLink;
+        folder.driveSynced = true;
+        folder.driveSyncDate = new Date().toISOString();
+        persistLocal();
+        const folderRef = doc(db, FOLDERS_COLLECTION, folder.id);
+        await setDoc(folderRef, folder, { merge: true });
+      } catch (e) {
+        console.warn('Background Google Drive batch upload notice:', e);
+      }
+    })();
+  }
+
+  addNotification({
+    folderId: folder.id,
+    folderName: folder.folderName,
+    type: 'file_upload',
+    title: `${createdFiles.length} New Files Uploaded`,
+    description: `Batch files added to ${folder.folderName}.`,
+    actor: 'Admin'
+  }).catch(() => {});
+
+  return createdFiles;
 }
 
 // Delete a file from folder
@@ -328,6 +445,14 @@ export async function deleteFileFromFolder(folderId: string, fileId: string): Pr
     }
 
     await saveProjectFolder(folder);
+
+    // If file was synced to Google Drive, remove it from Drive
+    const driveToken = getGoogleDriveAccessToken();
+    if (driveToken && file?.driveFileId) {
+      deleteFileFromGoogleDrive(driveToken, file.driveFileId).catch((err) => {
+        console.warn('Drive file delete error:', err);
+      });
+    }
 
     if (file) {
       await addNotification({

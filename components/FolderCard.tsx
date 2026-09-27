@@ -15,11 +15,12 @@ import {
   Eye, 
   Trash2, 
   KeyRound, 
-  DownloadCloud,
   CheckCircle2,
   Clock,
   Sparkles,
-  Edit3
+  Edit3,
+  Cloud,
+  ExternalLink
 } from 'lucide-react';
 
 interface FolderCardProps {
@@ -77,16 +78,36 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
 
-        {/* Top Badges: Status */}
+        {/* Top Badges: Category & File Count */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-black/60 backdrop-blur-md text-white border border-white/20">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{folder.status}</span>
-          </span>
+          {folder.projectCategory ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-black/60 backdrop-blur-md text-white border border-white/20">
+              <span>{folder.projectCategory}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-600/80 backdrop-blur-md text-white border border-white/20">
+              <span>Vault</span>
+            </span>
+          )}
 
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-white/20 backdrop-blur-md text-white border border-white/20">
-            {fileCount} {fileCount === 1 ? 'Attachment' : 'Attachments'}
-          </span>
+          <div className="flex items-center gap-1">
+            {folder.driveFolderUrl && (
+              <a
+                href={folder.driveFolderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="px-2 py-1 rounded-full text-[10px] font-bold bg-blue-600/80 hover:bg-blue-600 backdrop-blur-md text-white border border-white/20 flex items-center gap-1 transition"
+                title="Open in Google Drive"
+              >
+                <Cloud className="w-3 h-3" />
+                <span>Drive</span>
+              </a>
+            )}
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-white/20 backdrop-blur-md text-white border border-white/20">
+              {fileCount} {fileCount === 1 ? 'File' : 'Files'}
+            </span>
+          </div>
         </div>
 
         {/* Bottom Banner on Image: Client Name */}
@@ -136,7 +157,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
               </span>
               <button
                 onClick={() => setShowPass(!showPass)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition cursor-pointer"
               >
                 <Eye className="w-3.5 h-3.5" />
               </button>

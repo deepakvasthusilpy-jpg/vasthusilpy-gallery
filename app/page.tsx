@@ -10,6 +10,7 @@ import {
   deleteProjectFolder, 
   clearAllProjectFolders,
   addFileToFolder, 
+  addBatchFilesToFolder,
   updateFileInFolder,
   deleteFileFromFolder, 
   setFolderCoverImage, 
@@ -23,10 +24,14 @@ import {
   AuthSession,
   initializeStorage
 } from '@/lib/storage';
+import { initGoogleDriveAuth } from '@/lib/googleDrive';
 import { COMPANY_INFO } from '@/lib/sample-data';
 import { Navbar } from '@/components/Navbar';
 import { HeroAutoCarousel } from '@/components/HeroAutoCarousel';
+import { HomePagePortfolio } from '@/components/HomePagePortfolio';
 import { ProjectDashboard } from '@/components/ProjectDashboard';
+import { AppSidebar, DashboardTab } from '@/components/AppSidebar';
+import { FilePreviewModal } from '@/components/FilePreviewModal';
 import { FolderDetailModal } from '@/components/FolderDetailModal';
 import { VisitingCardModal } from '@/components/VisitingCardModal';
 import { CreateFolderModal } from '@/components/CreateFolderModal';
@@ -57,6 +62,7 @@ export default function Home() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [notifications, setNotifications] = useState<ActivityNotification[]>([]);
   const [activeTab, setActiveTab] = useState<'folders' | 'services' | 'about'>('folders');
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('my-cloud');
 
   // Modals & Action States
   const [activeFolderDetail, setActiveFolderDetail] = useState<ProjectFolder | null>(null);
@@ -131,9 +137,13 @@ export default function Home() {
       });
     }
 
+    // Initialize Google Drive Auth Listener
+    const driveAuthUnsub = initGoogleDriveAuth();
+
     return () => {
       clearTimeout(timer);
       unsub();
+      driveAuthUnsub();
     };
   }, []);
 
@@ -208,9 +218,12 @@ export default function Home() {
       ]
     };
 
+    // 1. Instant local state update (0ms UI latency)
     setFolders((prev) => [newFolder, ...prev]);
-    await saveProjectFolder(newFolder);
     setActiveVisitingCard(newFolder);
+
+    // 2. Background persistence
+    saveProjectFolder(newFolder).catch(err => console.warn('Background folder save error:', err));
   };
 
   const handleUpdateFolder = async (folderId: string, updates: Partial<ProjectFolder>) => {
@@ -223,8 +236,8 @@ export default function Home() {
     }
     setEditingFolder(null);
 
-    // 2. Persist to storage & Firestore
-    await updateProjectFolder(folderId, updates);
+    // 2. Persist to storage & Firestore in background
+    updateProjectFolder(folderId, updates).catch(err => console.warn('Background update folder error:', err));
   };
 
   const handleConfirmDeleteFolder = async (folderId: string) => {
@@ -235,7 +248,7 @@ export default function Home() {
     setFolderToDelete(null);
 
     // 2. Persist to storage & Firestore
-    await deleteProjectFolder(folderId);
+    deleteProjectFolder(folderId).catch(err => console.warn('Background delete folder error:', err));
   };
 
   const handleClearAll = async () => {
@@ -249,12 +262,17 @@ export default function Home() {
 
   // File Operations
   const handleUploadFile = async (folderId: string, fileData: Omit<ProjectFile, 'id' | 'uploadedAt'>) => {
-    const newFile = await addFileToFolder(folderId, fileData);
+    const tempFile: ProjectFile = {
+      ...fileData,
+      id: 'f_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      uploadedAt: new Date().toISOString()
+    };
 
+    // Instant local update
     setActiveFolderDetail((prev) => {
       if (prev && prev.id === folderId) {
-        const updatedFiles = [newFile, ...(prev.files || [])];
-        const cover = newFile.isCover || !prev.coverImageUrl ? (newFile.fileUrl.startsWith('http') || newFile.fileUrl.startsWith('data:image') ? newFile.fileUrl : prev.coverImageUrl) : prev.coverImageUrl;
+        const updatedFiles = [tempFile, ...(prev.files || [])];
+        const cover = tempFile.isCover || !prev.coverImageUrl ? (tempFile.fileUrl.startsWith('http') || tempFile.fileUrl.startsWith('data:image') || tempFile.fileUrl.startsWith('blob:') ? tempFile.fileUrl : prev.coverImageUrl) : prev.coverImageUrl;
         return { ...prev, files: updatedFiles, coverImageUrl: cover };
       }
       return prev;
@@ -263,13 +281,48 @@ export default function Home() {
     setFolders((prev) =>
       prev.map((f) => {
         if (f.id === folderId) {
-          const updatedFiles = [newFile, ...(f.files || [])];
-          const cover = newFile.isCover || !f.coverImageUrl ? (newFile.fileUrl.startsWith('http') || newFile.fileUrl.startsWith('data:image') ? newFile.fileUrl : f.coverImageUrl) : f.coverImageUrl;
+          const updatedFiles = [tempFile, ...(f.files || [])];
+          const cover = tempFile.isCover || !f.coverImageUrl ? (tempFile.fileUrl.startsWith('http') || tempFile.fileUrl.startsWith('data:image') || tempFile.fileUrl.startsWith('blob:') ? tempFile.fileUrl : f.coverImageUrl) : f.coverImageUrl;
           return { ...f, files: updatedFiles, coverImageUrl: cover };
         }
         return f;
       })
     );
+
+    addFileToFolder(folderId, fileData).catch(err => console.warn('Background addFile error:', err));
+  };
+
+  // Instant Batch File Upload
+  const handleUploadBatchFiles = async (folderId: string, filesData: Array<Omit<ProjectFile, 'id' | 'uploadedAt'>>) => {
+    const tempFiles: ProjectFile[] = filesData.map((f, idx) => ({
+      ...f,
+      id: 'f_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substring(2, 6),
+      uploadedAt: new Date().toISOString()
+    }));
+
+    // Instant local update
+    setActiveFolderDetail((prev) => {
+      if (prev && prev.id === folderId) {
+        const updatedFiles = [...tempFiles, ...(prev.files || [])];
+        const cover = tempFiles.find(tf => tf.isCover)?.fileUrl || (!prev.coverImageUrl ? tempFiles.find(tf => tf.fileUrl.startsWith('http') || tf.fileUrl.startsWith('data:image') || tf.fileUrl.startsWith('blob:'))?.fileUrl : prev.coverImageUrl);
+        return { ...prev, files: updatedFiles, coverImageUrl: cover };
+      }
+      return prev;
+    });
+
+    setFolders((prev) =>
+      prev.map((f) => {
+        if (f.id === folderId) {
+          const updatedFiles = [...tempFiles, ...(f.files || [])];
+          const cover = tempFiles.find(tf => tf.isCover)?.fileUrl || (!f.coverImageUrl ? tempFiles.find(tf => tf.fileUrl.startsWith('http') || tf.fileUrl.startsWith('data:image') || tf.fileUrl.startsWith('blob:'))?.fileUrl : f.coverImageUrl);
+          return { ...f, files: updatedFiles, coverImageUrl: cover };
+        }
+        return f;
+      })
+    );
+
+    // Background persistence
+    addBatchFilesToFolder(folderId, filesData).catch(err => console.warn('Background batch upload error:', err));
   };
 
   const handleUpdateFile = async (folderId: string, fileId: string, updates: Partial<ProjectFile>) => {
@@ -398,12 +451,13 @@ export default function Home() {
   };
 
   const visibleFolders = isClient && session?.folderId ? folders.filter(f => f.id === session.folderId) : folders;
+  const totalFilesCount = folders.reduce((sum, f) => sum + (f.files?.length || 0), 0);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans selection:bg-red-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-[#071120] text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans selection:bg-red-500 selection:text-white">
       
       {/* Precision Blueprint Grid Overlay */}
-      <div className="fixed inset-0 pointer-events-none opacity-30 dark:opacity-15 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:20px_20px] -z-10" />
+      <div className="fixed inset-0 pointer-events-none opacity-25 dark:opacity-10 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] -z-10" />
 
       {/* Global Navbar */}
       <Navbar
@@ -422,102 +476,162 @@ export default function Home() {
         setActiveTab={setActiveTab}
       />
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+      {/* Split Workspace Layout with Auto-Collapsible Left Side Dock */}
+      <div className="flex-1 flex w-full min-h-[calc(100vh-80px)] overflow-hidden">
+        
+        {/* Left Auto-Collapsible Dock */}
+        <AppSidebar
+          activeTab={dashboardTab}
+          onSelectTab={(tab) => {
+            setDashboardTab(tab);
+            setActiveTab('folders');
+            if (tab === 'ai-vasthu') setIsAIVasthuOpen(true);
+            if (tab === 'drive-sync') setIsDataVaultOpen(true);
+          }}
+          session={session}
+          isAdmin={isAdmin}
+          onOpenGateway={handleOpenGateway}
+          onLogout={handleLogout}
+          onOpenCreateFolder={() => setIsCreateModalOpen(true)}
+          onOpenDriveSync={() => setIsDataVaultOpen(true)}
+          onOpenAIVasthu={() => setIsAIVasthuOpen(true)}
+          totalVaultsCount={visibleFolders.length}
+          totalFilesCount={totalFilesCount}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
 
-        {/* TAB: SERVICES */}
-        {activeTab === 'services' && (
-          <CompanyServicesSection
-            onOpenCreateFolder={() => setIsCreateModalOpen(true)}
-            onOpenAIVasthu={() => setIsAIVasthuOpen(true)}
-          />
-        )}
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#EEF4FB] dark:bg-[#0B1528]">
 
-        {/* TAB: ABOUT / COMPANY INFO */}
-        {activeTab === 'about' && (
-          <div className="space-y-8 py-6">
-            <div className="rounded-3xl bg-white dark:bg-slate-900 p-8 sm:p-12 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
-              <div className="max-w-3xl space-y-4">
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-100 dark:bg-red-950 text-red-600 uppercase tracking-widest">
-                  About Vasthusilpy
-                </span>
-                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">
-                  VASTHUSILPY PLANS 3D DESIGNS & VASTU CONSULTATION
-                </h1>
-                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Based in <strong>Keralassery, Palakkad</strong>, Vasthusilpy specializes in cutting-edge residential and commercial architectural design, precision 2D CAD drafting, ultra-realistic 3D walkthrough rendering, and traditional Vasthu Shastra consultation.
-                </p>
-                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  We empower our clients with a dedicated cloud-synced project vault, enabling real-time access to building permits, structural drawings, and direct voice discussions with our architectural team.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
-                  <span className="text-xs text-slate-400 block">Chief Architect & Consultant:</span>
-                  <span className="font-bold text-base text-slate-900 dark:text-white">Deepak C</span>
-                </div>
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
-                  <span className="text-xs text-slate-400 block">Direct Contact:</span>
-                  <span className="font-bold text-base text-slate-900 dark:text-white font-mono">9567627277 / 9747995961</span>
-                </div>
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
-                  <span className="text-xs text-slate-400 block">Office Location:</span>
-                  <span className="font-bold text-base text-slate-900 dark:text-white">Keralassery, Palakkad - 678641</span>
-                </div>
-              </div>
-            </div>
-
-            <CompanyServicesSection />
-          </div>
-        )}
-
-        {/* TAB: PROJECT FOLDERS & VAULTS (MAIN WORKSPACE) */}
-        {activeTab === 'folders' && (
-          <div className="space-y-8">
-            
-            {/* Hero Banner (Clean, Architectural, Zero Mock Images) */}
-            <HeroAutoCarousel
-              folders={folders}
-              isAdmin={isAdmin}
-              onOpenCreateFolder={() => setIsCreateModalOpen(true)}
-              onOpenGateway={handleOpenGateway}
-              onOpenClientLogin={() => handleOpenGateway('client')}
-              onOpenAdminLogin={() => handleOpenGateway('admin')}
-              onExploreFolders={() => {
-                const el = document.getElementById('project-dashboard-section');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
-
-            {/* Comprehensive Dashboard with Arrangement Modes (Grid, Table, All Files) */}
-            <div id="project-dashboard-section">
-              <ProjectDashboard
-                folders={visibleFolders}
-                isAdmin={isAdmin}
-                onOpenFolder={(f) => setActiveFolderDetail(f)}
-                onOpenVisitingCard={(f) => setActiveVisitingCard(f)}
-                onEditFolder={isAdmin ? (f) => setEditingFolder(f) : undefined}
-                onDeleteFolder={isAdmin ? (f) => setFolderToDelete(f) : undefined}
+          {/* TAB: SERVICES (From Top Nav) */}
+          {activeTab === 'services' && (
+            <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              <CompanyServicesSection
                 onOpenCreateFolder={() => setIsCreateModalOpen(true)}
-                onResetVault={isAdmin ? () => setShowClearAllConfirm(true) : undefined}
-                onShareWhatsApp={handleShareWhatsApp}
-                onEditFile={isAdmin ? (folder, file) => setFileToEdit({ folder, file }) : undefined}
-                onDeleteFile={isAdmin ? (folderId, fileId, fileName) => setDirectFileToDelete({ folderId, fileId, fileName }) : undefined}
-                onPreviewFile={(file) => setPreviewFile(file)}
+                onOpenAIVasthu={() => setIsAIVasthuOpen(true)}
               />
+            </main>
+          )}
+
+          {/* TAB: ABOUT / COMPANY INFO (From Top Nav) */}
+          {activeTab === 'about' && (
+            <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+              <div className="rounded-3xl bg-white dark:bg-slate-900 p-8 sm:p-12 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+                <div className="max-w-3xl space-y-4">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-100 dark:bg-red-950 text-red-600 uppercase tracking-widest">
+                    About Vasthusilpy
+                  </span>
+                  <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">
+                    VASTHUSILPY PLANS 3D DESIGNS & VASTU CONSULTATION
+                  </h1>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Based in <strong>Keralassery, Palakkad</strong>, Vasthusilpy specializes in cutting-edge residential and commercial architectural design, precision 2D CAD drafting, ultra-realistic 3D walkthrough rendering, and traditional Vasthu Shastra consultation.
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    We empower our clients with a dedicated cloud-synced project vault, enabling real-time access to building permits, structural drawings, and direct voice discussions with our architectural team.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
+                    <span className="text-xs text-slate-400 block">Chief Architect & Consultant:</span>
+                    <span className="font-bold text-base text-slate-900 dark:text-white">Deepak C</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
+                    <span className="text-xs text-slate-400 block">Direct Contact:</span>
+                    <span className="font-bold text-base text-slate-900 dark:text-white font-mono">9567627277 / 9747995961</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
+                    <span className="text-xs text-slate-400 block">Office Location:</span>
+                    <span className="font-bold text-base text-slate-900 dark:text-white">Keralassery, Palakkad - 678641</span>
+                  </div>
+                </div>
+              </div>
+
+              <CompanyServicesSection />
+            </main>
+          )}
+
+          {/* TAB: PROJECT FOLDERS & VAULTS (MAIN WORKSPACE) */}
+          {activeTab === 'folders' && (
+            <div className="flex-1 flex flex-col">
+              
+              {/* Hero Banner (Top Animated Media Showcase when on My Cloud) */}
+              {dashboardTab === 'my-cloud' && (
+                <div className="w-full px-3 sm:px-6 lg:px-8 pt-4 pb-4 space-y-6">
+                  <HeroAutoCarousel
+                    folders={folders}
+                    isAdmin={isAdmin}
+                    onOpenCreateFolder={() => setIsCreateModalOpen(true)}
+                    onOpenGateway={handleOpenGateway}
+                    onOpenClientLogin={() => handleOpenGateway('client')}
+                    onOpenAdminLogin={() => handleOpenGateway('admin')}
+                    onExploreFolders={() => {
+                      const el = document.getElementById('public-portfolio-section');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    onPreviewFile={(file) => setPreviewFile(file)}
+                  />
+
+                  {/* Public View-Only Portfolio Section with Screen-Size Media Stream and Password Gated Download & Share */}
+                  <div id="public-portfolio-section" className="w-full min-h-[90vh]">
+                    <HomePagePortfolio
+                      folders={folders}
+                      session={session}
+                      isAdmin={isAdmin}
+                      onPreviewFile={(file) => setPreviewFile(file)}
+                      onOpenFolderDetail={(f) => setActiveFolderDetail(f)}
+                      onOpenClientLogin={() => handleOpenGateway('client')}
+                      onOpenAdminLogin={() => handleOpenGateway('admin')}
+                      onShareFolder={(f) => handleShareWhatsApp(f)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Comprehensive Dashboard with Left Dock Tab Views */}
+              <div id="project-dashboard-section" className="flex-1 flex flex-col">
+                <ProjectDashboard
+                  folders={visibleFolders}
+                  activeTab={dashboardTab}
+                  onSelectTab={(tab) => {
+                    setDashboardTab(tab);
+                    if (tab === 'ai-vasthu') setIsAIVasthuOpen(true);
+                    if (tab === 'drive-sync') setIsDataVaultOpen(true);
+                  }}
+                  isAdmin={isAdmin}
+                  onOpenFolder={(f) => setActiveFolderDetail(f)}
+                  onOpenVisitingCard={(f) => setActiveVisitingCard(f)}
+                  onEditFolder={isAdmin ? (f) => setEditingFolder(f) : undefined}
+                  onDeleteFolder={isAdmin ? (f) => setFolderToDelete(f) : undefined}
+                  onOpenCreateFolder={() => setIsCreateModalOpen(true)}
+                  onShareWhatsApp={handleShareWhatsApp}
+                  onEditFile={isAdmin ? (folder, file) => setFileToEdit({ folder, file }) : undefined}
+                  onDeleteFile={isAdmin ? (folderId, fileId, fileName) => setDirectFileToDelete({ folderId, fileId, fileName }) : undefined}
+                  onUploadFile={handleUploadFile}
+                  onUploadBatchFiles={handleUploadBatchFiles}
+                  onPreviewFile={(file) => setPreviewFile(file)}
+                  onOpenDriveSync={() => setIsDataVaultOpen(true)}
+                  onOpenAIVasthu={() => setIsAIVasthuOpen(true)}
+                />
+              </div>
+
+              {/* Company Services Strip at Bottom of My Cloud */}
+              {dashboardTab === 'my-cloud' && (
+                <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                  <CompanyServicesSection
+                    onOpenCreateFolder={() => setIsCreateModalOpen(true)}
+                    onOpenAIVasthu={() => setIsAIVasthuOpen(true)}
+                  />
+                </div>
+              )}
+
             </div>
+          )}
 
-            {/* Company Services Quick Strip */}
-            <CompanyServicesSection
-              onOpenCreateFolder={() => setIsCreateModalOpen(true)}
-              onOpenAIVasthu={() => setIsAIVasthuOpen(true)}
-            />
-
-          </div>
-        )}
-
-      </main>
+        </div>
+      </div>
 
       {/* Global Modals */}
 
@@ -529,6 +643,7 @@ export default function Home() {
           isAdmin={isAdmin}
           onClose={() => setActiveFolderDetail(null)}
           onUploadFile={handleUploadFile}
+          onUploadBatchFiles={handleUploadBatchFiles}
           onUpdateFile={handleUpdateFile}
           onDeleteFile={handleDeleteFile}
           onEditFolder={isAdmin ? (f) => setEditingFolder(f) : undefined}
@@ -784,6 +899,7 @@ export default function Home() {
         }}
         onAdminLoginSuccess={handleAdminLoginSuccess}
         onClientLoginSuccess={handleClientLoginSuccess}
+        onCreateFolder={handleCreateFolder}
         onExploreGuest={() => {
           setIsGuestMode(true);
           setIsGatewayLoginOpen(false);
@@ -804,6 +920,7 @@ export default function Home() {
         folders={folders}
         onClose={() => setIsClientLoginOpen(false)}
         onLoginSuccess={handleClientLoginSuccess}
+        onCreateFolder={handleCreateFolder}
       />
 
       {/* 9. Google Drive / Data Vault Sync Modal */}

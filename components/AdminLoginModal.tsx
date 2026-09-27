@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Copy,
   Check,
-  QrCode
+  QrCode,
+  Shield
 } from 'lucide-react';
 
 interface AdminLoginModalProps {
@@ -60,21 +61,21 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
       <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         
         {/* Top Header */}
-        <div className="px-6 py-5 bg-[#153e2d] text-white flex items-center justify-between">
+        <div className="px-6 py-5 bg-gradient-to-r from-[#0B3B7B] to-[#07244C] text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-white/15 backdrop-blur-md">
-              <ShieldCheck className="w-6 h-6 text-emerald-300" />
+            <div className="p-2.5 rounded-2xl bg-white/15 backdrop-blur-md">
+              <Shield className="w-5 h-5 text-red-400" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Chief Architect Admin Sign In</h2>
-              <p className="text-xs text-emerald-100/80">Vasthusilpy Master 2FA Verification</p>
+              <p className="text-xs text-blue-200/80">Vasthusilpy Master 2FA Verification</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-white/80 hover:text-white">
+          <button onClick={onClose} className="p-2 text-white/80 hover:text-white rounded-xl hover:bg-white/10 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -94,7 +95,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
                     placeholder="9747995961"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#153e2d]"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1D70E2]"
                     required
                   />
                 </div>
@@ -102,16 +103,16 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    6-Digit TOTP Authenticator Code
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    6-Digit Authenticator Code (TOTP)
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowQrSetup(true)}
-                    className="text-xs font-semibold text-[#153e2d] dark:text-emerald-400 hover:underline flex items-center gap-1"
+                    className="text-xs text-[#1D70E2] dark:text-blue-400 hover:underline flex items-center gap-1 font-semibold"
                   >
                     <QrCode className="w-3.5 h-3.5" />
-                    <span>Scan QR Code</span>
+                    <span>Setup 2FA</span>
                   </button>
                 </div>
                 <div className="relative">
@@ -122,68 +123,60 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                     maxLength={6}
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Enter 6-digit TOTP code"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono tracking-widest text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#153e2d]"
+                    placeholder="Enter 6-digit code"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono tracking-widest text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1D70E2]"
                     required
-                    autoFocus
+                    autoComplete="one-time-code"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Enter the code from Google Authenticator or Microsoft Authenticator.
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Open Google Authenticator or Microsoft Authenticator on your phone.
                 </p>
               </div>
 
               {error && (
-                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-600 text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-xl bg-[#153e2d] hover:bg-[#1a4a37] text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Verify TOTP & Sign In</span>
-                </button>
-              </div>
+              <button
+                type="submit"
+                className="w-full py-3 px-4 rounded-xl bg-[#0B3B7B] hover:bg-[#07244C] text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Verify TOTP & Sign In</span>
+              </button>
             </form>
           ) : (
-            /* QR Setup view inside modal (Direct scan, no password) */
             <div className="space-y-4 text-center">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  2FA Authenticator Setup
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowQrSetup(false)}
-                  className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-semibold"
-                >
-                  Back to Sign In
-                </button>
-              </div>
-
+              <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">
+                Setup Google Authenticator 2FA
+              </h3>
               <p className="text-xs text-slate-500">
-                Scan this QR code with <strong>Google Authenticator</strong> or <strong>Microsoft Authenticator</strong>:
+                Scan this QR code with Google Authenticator or Microsoft Authenticator.
               </p>
 
-              <div className="p-3 bg-white rounded-2xl inline-block border border-slate-200 shadow-inner">
-                <QRCodeSVG value={getAdminOTPAuthURI()} size={170} level="H" />
+              <div className="p-4 bg-white rounded-2xl border border-slate-200 inline-block mx-auto shadow-inner">
+                <QRCodeSVG
+                  value={getAdminOTPAuthURI()}
+                  size={160}
+                  level="H"
+                  includeMargin={false}
+                />
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-left text-xs border border-slate-200 dark:border-slate-700">
-                <div className="flex justify-between items-center text-slate-500 text-[10px] mb-1">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
                   <span>Secret Key:</span>
                   <button
                     type="button"
                     onClick={handleCopySecret}
-                    className="text-[#153e2d] dark:text-emerald-400 font-bold flex items-center gap-1"
+                    className="text-[#1D70E2] dark:text-blue-400 font-bold hover:underline flex items-center gap-1"
                   >
                     {copiedSecret ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedSecret ? 'Copied' : 'Copy'}</span>
+                    <span>{copiedSecret ? 'Copied!' : 'Copy'}</span>
                   </button>
                 </div>
                 <div className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -194,13 +187,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowQrSetup(false)}
-                className="w-full py-2.5 rounded-xl bg-[#153e2d] text-white text-xs font-bold shadow transition"
+                className="w-full py-2.5 rounded-xl bg-[#0B3B7B] text-white text-xs font-bold"
               >
-                Return to Login
+                Done, Return to Login
               </button>
             </div>
           )}
         </div>
+
       </div>
     </div>
   );

@@ -2,10 +2,12 @@ import { ProjectFolder, ActivityNotification } from './types';
 
 export const COMPANY_INFO = {
   name: 'VASTHUSILPY',
+  architect: 'Deepak C',
   location: 'KERALASSERY',
   fullName: 'VASTHUSILPY PLANS 3D DESIGNS & VASTU CONSULTATION',
   subtitle: 'Landscape Architectural Services, Building Plans, 3D Designs & Permits',
   phones: ['9747995961', '9567627277', '7012383137'],
+  primaryPhone: '9747995961',
   primaryAdminMobile: '9747995961',
   secondaryAdminMobile: '9567627277',
   thirdAdminMobile: '7012383137',

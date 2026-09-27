@@ -42,7 +42,6 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
   const [clientName, setClientName] = useState(folder?.clientName || '');
   const [clientMobile, setClientMobile] = useState(folder?.clientMobile || '');
   const [customPassword, setCustomPassword] = useState(folder?.customPassword || '');
-  const [status, setStatus] = useState<ProjectFolder['status']>(folder?.status || 'In Progress');
   const [notes, setNotes] = useState(folder?.notes || '');
   const [coverImageUrl, setCoverImageUrl] = useState(folder?.coverImageUrl || '');
   const [cardTheme, setCardTheme] = useState<ProjectFolder['cardTheme']>(folder?.cardTheme || 'signature-red');
@@ -71,22 +70,20 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName.trim() || !clientMobile.trim() || !customPassword.trim()) return;
 
-    setIsSubmitting(true);
-    await onUpdateFolder(folder.id, {
+    onUpdateFolder(folder.id, {
       folderName: folderName.trim() || `${clientName.trim()} Project Vault`,
       clientName: clientName.trim(),
       clientMobile: clientMobile.trim(),
       customPassword: customPassword.trim(),
-      status,
       notes: notes.trim(),
       coverImageUrl: coverImageUrl.trim() || undefined,
       cardTheme
-    });
-    setIsSubmitting(false);
+    }).catch((err) => console.warn('Update folder error:', err));
+    
     onClose();
   };
 
@@ -260,36 +257,16 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Project Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none font-semibold text-emerald-600 dark:text-emerald-400"
-                >
-                  <option value="Planning">Planning</option>
-                  <option value="3D Design">3D Design</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Blueprint Ready">Blueprint Ready</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Under Construction">Under Construction</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Client ID (Mobile)
-                </label>
-                <input
-                  type="text"
-                  disabled
-                  value={clientMobile}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Client ID (Mobile)
+              </label>
+              <input
+                type="text"
+                disabled
+                value={clientMobile}
+                className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono"
+              />
             </div>
 
             <div>

@@ -98,23 +98,34 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
         category = 'CAD Drawing';
       }
 
+      // Generate instant object URL for 0ms preview latency
+      const objectUrl = URL.createObjectURL(file);
+      const newAttId = 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+
+      setAttachments((prev) => {
+        const hasCover = prev.some((a) => a.isCover);
+        const isCover = !hasCover && isImg; // Auto-set first image as cover
+        const newAtt: SelectedAttachment = {
+          id: newAttId,
+          name: file.name,
+          type: detectedType,
+          fileUrl: objectUrl,
+          fileSize: sizeStr,
+          isCover,
+          category
+        };
+        return [...prev, newAtt];
+      });
+
+      // Also read as data URL in background if needed for offline storage
       const reader = new FileReader();
       reader.onload = (ev) => {
         const resultUrl = (ev.target?.result as string) || '';
-        setAttachments((prev) => {
-          const hasCover = prev.some((a) => a.isCover);
-          const isCover = !hasCover && isImg; // Auto-set first image as cover
-          const newAtt: SelectedAttachment = {
-            id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-            name: file.name,
-            type: detectedType,
-            fileUrl: resultUrl,
-            fileSize: sizeStr,
-            isCover,
-            category
-          };
-          return [...prev, newAtt];
-        });
+        if (resultUrl) {
+          setAttachments((prev) =>
+            prev.map((item) => (item.id === newAttId ? { ...item, fileUrl: resultUrl } : item))
+          );
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -128,7 +139,7 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       const filtered = prev.filter((a) => a.id !== id);
       // If deleted attachment was cover, assign cover to next image if available
       if (prev.find((a) => a.id === id)?.isCover && filtered.length > 0) {
-        const nextImg = filtered.find((a) => a.fileUrl.startsWith('data:image') || a.fileUrl.startsWith('http'));
+        const nextImg = filtered.find((a) => a.fileUrl.startsWith('data:image') || a.fileUrl.startsWith('http') || a.fileUrl.startsWith('blob:'));
         if (nextImg) nextImg.isCover = true;
       }
       return filtered;
@@ -144,14 +155,12 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName.trim() || !clientMobile.trim() || !customPassword.trim()) return;
 
-    setIsSubmitting(true);
-
     const coverItem = attachments.find((a) => a.isCover);
-    const coverUrl = coverItem?.fileUrl || attachments.find((a) => a.fileUrl.startsWith('data:image') || a.fileUrl.startsWith('http'))?.fileUrl || undefined;
+    const coverUrl = coverItem?.fileUrl || attachments.find((a) => a.fileUrl.startsWith('data:image') || a.fileUrl.startsWith('http') || a.fileUrl.startsWith('blob:'))?.fileUrl || undefined;
 
     const formattedFiles: ProjectFile[] = attachments.map((a) => ({
       id: 'file_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
@@ -165,20 +174,19 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       isCover: a.isCover
     }));
 
-    await onCreateFolder({
+    // Trigger instant creation without blocking modal close
+    onCreateFolder({
       folderName: folderName.trim() || `${clientName.trim()} Project Vault`,
       clientName: clientName.trim(),
       clientMobile: clientMobile.trim(),
       customPassword: customPassword.trim(),
-      status: 'In Progress',
       coverImageUrl: coverUrl,
       notes: notes.trim(),
       cardTheme: cardTheme || 'signature-red',
       driveSynced: true,
       files: formattedFiles
-    });
+    }).catch((err) => console.warn('Folder creation background error:', err));
 
-    setIsSubmitting(false);
     onClose();
   };
 

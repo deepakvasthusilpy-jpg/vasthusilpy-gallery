@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrandLogo } from './BrandLogo';
 import { AuthSession } from '@/lib/storage';
 import { ActivityNotification } from '@/lib/types';
+import { subscribeToGoogleDriveAuth, GoogleDriveState } from '@/lib/googleDrive';
 import { 
   Sun, 
   Moon, 
@@ -12,10 +13,8 @@ import {
   User, 
   LogOut, 
   Database, 
-  Sparkles, 
-  Phone, 
-  CheckCheck,
-  FolderLock,
+  Cloud,
+  CheckCircle2,
   Menu,
   X
 } from 'lucide-react';
@@ -53,6 +52,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [showNotifs, setShowNotifs] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [driveState, setDriveState] = useState<GoogleDriveState>({
+    isConnected: false,
+    user: null,
+    rootFolderId: null,
+    rootFolderUrl: null
+  });
+
+  useEffect(() => {
+    const unsub = subscribeToGoogleDriveAuth((state) => {
+      setDriveState(state);
+    });
+    return () => unsub();
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -106,14 +118,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Action Buttons Right */}
           <div className="flex items-center gap-2 sm:gap-3">
             
-            {/* Google Cloud Data Vault Button */}
+            {/* Google Drive Data Vault Button */}
             <button
               onClick={onOpenDataVault}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 transition-all"
-              title="Sync with 'VASTHUSILPY - DATA VAULT' Google Cloud Storage"
+              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                driveState.isConnected 
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                  : 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/20'
+              }`}
+              title="Google Drive Vault: Permanent Cloud Storage"
             >
-              <Database className="w-3.5 h-3.5 text-blue-500" />
-              <span>Data Vault</span>
+              {driveState.isConnected ? (
+                <>
+                  <Cloud className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Drive Synced</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                </>
+              ) : (
+                <>
+                  <Database className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Google Drive Vault</span>
+                </>
+              )}
             </button>
 
             {/* Notification Bell */}
@@ -278,12 +304,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
-            <div className="pt-2 flex items-center justify-end border-t border-slate-100 dark:border-slate-800 text-xs">
+            <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 text-xs">
               <button 
                 onClick={() => { onOpenDataVault(); setMobileMenuOpen(false); }}
-                className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium"
+                className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium"
               >
-                <Database className="w-3.5 h-3.5" /> Data Vault Sync
+                <Database className="w-3.5 h-3.5" />
+                <span>Google Drive Vault</span>
+                {driveState.isConnected && (
+                  <span className="px-1.5 py-0.2 text-[9px] rounded bg-emerald-100 text-emerald-800 font-bold">
+                    Connected
+                  </span>
+                )}
               </button>
             </div>
           </div>
