@@ -26,15 +26,16 @@ import {
   HelpCircle,
   Sun,
   Moon,
-  Shield
+  Shield,
+  Film,
+  Radio
 } from 'lucide-react';
 import { AuthSession } from '@/lib/storage';
 import { COMPANY_INFO } from '@/lib/sample-data';
 
 export type DashboardTab = 
   | 'my-cloud' 
-  | 'shared-files' 
-  | 'all-files' 
+  | 'media-stream'
   | 'upload-center' 
   | 'visiting-cards' 
   | 'services' 
@@ -89,20 +90,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       description: 'Master Vault Hub'
     },
     {
-      id: 'shared-files' as DashboardTab,
-      label: 'Shared Files',
-      icon: Users,
-      count: totalVaultsCount,
-      tag: 'Client',
-      description: 'Client Shared Vaults'
-    },
-    {
-      id: 'all-files' as DashboardTab,
-      label: 'All Documents',
-      icon: FileText,
-      count: totalFilesCount,
-      tag: 'Files',
-      description: 'CAD Plans, 3D Renders & Permits'
+      id: 'media-stream' as DashboardTab,
+      label: 'Media Stream',
+      icon: Radio,
+      count: undefined,
+      tag: 'Live',
+      description: '5s Images & Video Broadcast Stream'
     },
     {
       id: 'upload-center' as DashboardTab,
@@ -253,67 +246,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           </button>
         </div>
       </nav>
-
-      {/* ========================================================================= */}
-      {/* 3. BOTTOM SECTION: SETTINGS, THEME & LOGOUT */}
-      {/* ========================================================================= */}
-      <div className="p-3 border-t border-blue-900/50 space-y-1">
-        
-        {/* Settings Tab */}
-        <button
-          onClick={() => onSelectTab('settings')}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold transition ${
-            activeTab === 'settings'
-              ? 'bg-white text-[#0B3B7B] font-bold shadow-md'
-              : 'text-blue-200 hover:bg-white/10 hover:text-white'
-          } ${!effectivelyExpanded ? 'justify-center px-0' : ''}`}
-          title="Settings & Security"
-        >
-          <Settings className={`w-4 h-4 shrink-0 ${activeTab === 'settings' ? 'text-[#0B3B7B]' : 'text-blue-300'}`} />
-          {effectivelyExpanded && <span className="truncate">Settings & Admin</span>}
-        </button>
-
-        {/* Theme Switcher Quick Toggle */}
-        {onToggleTheme && effectivelyExpanded && (
-          <button
-            onClick={onToggleTheme}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-blue-200 hover:bg-white/10 transition"
-          >
-            <span className="flex items-center gap-2.5">
-              {theme === 'dark' ? <Moon className="w-3.5 h-3.5 text-blue-300" /> : <Sun className="w-3.5 h-3.5 text-amber-300" />}
-              <span>Theme Mode</span>
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white uppercase">
-              {theme}
-            </span>
-          </button>
-        )}
-
-        {/* Log In / Log Out */}
-        {session ? (
-          <button
-            onClick={onLogout}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold text-red-300 hover:bg-red-500/20 hover:text-red-100 transition ${
-              !effectivelyExpanded ? 'justify-center px-0' : ''
-            }`}
-            title="Sign Out"
-          >
-            <LogOut className="w-4 h-4 shrink-0 text-red-400" />
-            {effectivelyExpanded && <span className="truncate">Log out</span>}
-          </button>
-        ) : (
-          <button
-            onClick={() => onOpenGateway('client')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-100 transition ${
-              !effectivelyExpanded ? 'justify-center px-0' : ''
-            }`}
-            title="Login Gateway"
-          >
-            <LogIn className="w-4 h-4 shrink-0 text-emerald-400" />
-            {effectivelyExpanded && <span className="truncate">Sign in</span>}
-          </button>
-        )}
-      </div>
 
     </aside>
   );

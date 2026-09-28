@@ -31,8 +31,8 @@ interface NavbarProps {
   onOpenAIAssistant?: () => void;
   notifications: ActivityNotification[];
   onClearNotifications?: () => void;
-  activeTab: 'folders' | 'portfolio' | 'services' | 'about';
-  setActiveTab: (tab: 'folders' | 'portfolio' | 'services' | 'about') => void;
+  activeTab: 'folders' | 'media-stream' | 'portfolio' | 'services' | 'about';
+  setActiveTab: (tab: 'folders' | 'media-stream' | 'portfolio' | 'services' | 'about') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -94,16 +94,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               Project Vaults
             </button>
             <button
-              onClick={() => setActiveTab('portfolio')}
+              onClick={() => setActiveTab('media-stream')}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                activeTab === 'portfolio'
+                activeTab === 'media-stream' || activeTab === 'portfolio'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <span>Portfolio</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] animate-pulse">
-                Auto 5s / Video
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              <span>Media Stream</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[9px]">
+                5s / Video
               </span>
             </button>
             <button
@@ -268,11 +269,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
-                  onClick={() => onOpenGateway ? onOpenGateway('client') : onOpenClientLogin()}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#153e2d] hover:bg-[#1a4a37] text-white shadow-md shadow-[#153e2d]/20 transition flex items-center gap-1.5"
+                  onClick={onOpenAdminLogin}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-900/20 transition flex items-center gap-1.5"
+                  title="Chief Architect / Administrator Access"
                 >
-                  <Shield className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Sign In</span>
+                  <Shield className="w-3.5 h-3.5 text-white" />
+                  <span>Admin Access</span>
                 </button>
               </div>
             )}
@@ -300,12 +302,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Vaults
               </button>
               <button
-                onClick={() => { setActiveTab('portfolio'); setMobileMenuOpen(false); }}
+                onClick={() => { setActiveTab('media-stream'); setMobileMenuOpen(false); }}
                 className={`p-2 rounded-lg text-[11px] font-semibold text-center ${
-                  activeTab === 'portfolio' ? 'bg-red-600 text-white' : 'bg-slate-100 dark:bg-slate-800'
+                  activeTab === 'media-stream' || activeTab === 'portfolio' ? 'bg-red-600 text-white' : 'bg-slate-100 dark:bg-slate-800'
                 }`}
               >
-                Portfolio
+                Media Stream
               </button>
               <button
                 onClick={() => { setActiveTab('services'); setMobileMenuOpen(false); }}

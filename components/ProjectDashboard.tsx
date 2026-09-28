@@ -359,12 +359,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
                     Project Vaults & Folders ({filteredFolders.length})
                   </h2>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onSelectTab('shared-files')}
-                      className="text-xs text-[#1D70E2] dark:text-blue-400 font-bold hover:underline"
-                    >
-                      View Shared List
-                    </button>
                     {isAdmin && (
                       <button
                         onClick={onOpenCreateFolder}
@@ -483,10 +477,10 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
                     Recent Files & CAD Drawings ({filteredFiles.length})
                   </h2>
                   <button
-                    onClick={() => onSelectTab('all-files')}
+                    onClick={() => onSelectTab('upload-center')}
                     className="text-xs text-[#1D70E2] dark:text-blue-400 font-bold hover:underline"
                   >
-                    View All Files
+                    + Upload Center
                   </button>
                 </div>
 
@@ -627,208 +621,6 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
 
             </div>
 
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* VIEW 2: "SHARED FILES" */}
-      {/* ========================================================================= */}
-      {activeTab === 'shared-files' && (
-        <div className="p-4 sm:p-6 space-y-6">
-          <div className="space-y-4">
-            <h2 className="text-xl sm:text-2xl font-black text-[#0B3B7B] dark:text-white tracking-tight">
-              Client Shared Vaults ({folders.length})
-            </h2>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3.5">
-              {folders.map((f, i) => {
-                const lineColors = ['border-blue-500', 'border-rose-400', 'border-purple-500', 'border-emerald-400'];
-                return (
-                  <div
-                    key={f.id}
-                    onClick={() => onOpenFolder(f)}
-                    className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-sm hover:shadow-md border border-slate-100 dark:border-slate-800 transition cursor-pointer flex flex-col justify-between h-32"
-                  >
-                    <div className="flex -space-x-1.5">
-                      <div className="w-6 h-6 rounded-full bg-[#0B3B7B] text-white text-[9px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-900">
-                        {f.clientName.slice(0, 1)}
-                      </div>
-                      <div className="w-6 h-6 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-900">
-                        V
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                        {f.folderName}
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
-                        {f.files?.length || 0} files
-                      </div>
-                      <div className={`mt-2 border-b-2 ${lineColors[i % lineColors.length]} w-8`} />
-                    </div>
-                  </div>
-                );
-              })}
-
-              {isAdmin && (
-                <div
-                  onClick={onOpenCreateFolder}
-                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-dashed border-slate-300 dark:border-slate-700 hover:border-[#1D70E2] transition cursor-pointer flex items-center justify-center h-32 text-slate-400 hover:text-[#1D70E2]"
-                >
-                  <Plus className="w-8 h-8 text-[#1D70E2]" />
-                </div>
-              )}
-            </div>
-
-            {/* Shared Recently List */}
-            <div className="space-y-3 pt-4">
-              <h3 className="text-base font-bold text-[#0B3B7B] dark:text-white">
-                Shared Files Log
-              </h3>
-
-              <div className="space-y-2">
-                {allFilesWithFolder.map(({ file, folder }) => {
-                  const badge = getFileIconBadge(file);
-                  return (
-                    <div
-                      key={file.id}
-                      className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-sm hover:shadow-md border border-slate-100 dark:border-slate-800 transition flex items-center justify-between gap-3"
-                    >
-                      <div 
-                        onClick={() => onPreviewFile && onPreviewFile(file, folder)}
-                        className="flex items-center gap-3.5 min-w-0 flex-1 cursor-pointer"
-                      >
-                        <div className={`w-10 h-10 rounded-xl ${badge.bg} flex items-center justify-center shrink-0`}>
-                          {badge.icon}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                            {file.name}
-                          </div>
-                          <div className="text-[11px] text-slate-400 truncate">
-                            {folder.folderName} · {folder.clientName}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center uppercase">
-                        {folder.clientName.slice(0, 2)}
-                      </div>
-
-                      <div className="hidden sm:flex items-center gap-6 text-xs text-slate-400 font-semibold">
-                        <span className="w-24 text-left">{badge.typeLabel}</span>
-                        <span className="w-16 font-mono text-slate-500">{file.fileSize}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => onShareWhatsApp(folder)}
-                          className="p-2 rounded-xl text-slate-500 hover:text-[#1D70E2] transition"
-                        >
-                          <Share2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onOpenFolder(folder)}
-                          className="p-2 rounded-xl text-slate-400 hover:text-slate-700 transition"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* VIEW 3: "ALL DOCUMENTS" / ALL FILES */}
-      {/* ========================================================================= */}
-      {activeTab === 'all-files' && (
-        <div className="p-4 sm:p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-[#0B3B7B] dark:text-white tracking-tight">
-                All Documents & Blueprints ({filteredFiles.length})
-              </h2>
-              <p className="text-xs text-slate-500">
-                Explore CAD drawings, 3D renders, permits, and Vasthu notes
-              </p>
-            </div>
-            <button
-              onClick={() => onSelectTab('upload-center')}
-              className="px-4 py-2 rounded-2xl bg-[#0B3B7B] hover:bg-blue-900 text-white font-bold text-xs shadow-md flex items-center gap-1.5 transition"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Upload New File</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredFiles.map(({ file, folder }) => {
-              const badge = getFileIconBadge(file);
-              const isImg = file.fileUrl?.startsWith('data:image') || file.type === '3d-render';
-              return (
-                <div
-                  key={file.id}
-                  onClick={() => onPreviewFile && onPreviewFile(file, folder)}
-                  className="group p-3 rounded-2xl bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl border border-slate-100 dark:border-slate-800 transition cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="w-full h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative mb-2 flex items-center justify-center">
-                    {isImg ? (
-                      <img
-                        src={file.fileUrl}
-                        alt={file.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center p-4 text-slate-400">
-                        <div className={`w-12 h-12 rounded-2xl ${badge.bg} flex items-center justify-center text-white mb-2 shadow-md`}>
-                          {badge.icon}
-                        </div>
-                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{badge.typeLabel}</span>
-                      </div>
-                    )}
-                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[9px] font-mono text-white">
-                      {file.fileSize}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                      {file.name}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 truncate">
-                      Vault: {folder.folderName} ({folder.clientName})
-                    </p>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-[10px] text-slate-400">
-                      {new Date(file.uploadedAt).toLocaleDateString()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onPreviewFile) onPreviewFile(file, folder);
-                      }}
-                      className="text-[#1D70E2] dark:text-blue-400 font-bold hover:underline inline-flex items-center gap-1"
-                    >
-                      <Eye className="w-3 h-3" /> Preview
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

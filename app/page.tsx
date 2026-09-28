@@ -28,9 +28,8 @@ import { initGoogleDriveAuth } from '@/lib/googleDrive';
 import { COMPANY_INFO } from '@/lib/sample-data';
 import { Navbar } from '@/components/Navbar';
 import { HomePageTopSignIn } from '@/components/HomePageTopSignIn';
-import { HeroAutoCarousel } from '@/components/HeroAutoCarousel';
 import { HomePagePortfolio } from '@/components/HomePagePortfolio';
-import { PortfolioShowcaseSection } from '@/components/PortfolioShowcaseSection';
+import { MediaStreamSection } from '@/components/MediaStreamSection';
 import { ProjectDashboard } from '@/components/ProjectDashboard';
 import { AppSidebar, DashboardTab } from '@/components/AppSidebar';
 import { FilePreviewModal } from '@/components/FilePreviewModal';
@@ -47,6 +46,7 @@ import { DataVaultSyncModal } from '@/components/DataVaultSyncModal';
 import { AIVasthuModal } from '@/components/AIVasthuModal';
 import { CompanyServicesSection } from '@/components/CompanyServicesSection';
 import { Footer } from '@/components/Footer';
+import { UnlockFolderModal } from '@/components/UnlockFolderModal';
 import { 
   Trash2,
   AlertTriangle,
@@ -63,8 +63,12 @@ export default function Home() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [session, setSession] = useState<AuthSession | null>(null);
   const [notifications, setNotifications] = useState<ActivityNotification[]>([]);
-  const [activeTab, setActiveTab] = useState<'folders' | 'portfolio' | 'services' | 'about'>('folders');
+  const [activeTab, setActiveTab] = useState<'folders' | 'media-stream' | 'portfolio' | 'services' | 'about'>('folders');
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('my-cloud');
+
+  // Folder Unlock tracking (User ID + Password authentication per folder)
+  const [unlockedFolderIds, setUnlockedFolderIds] = useState<string[]>([]);
+  const [folderToUnlock, setFolderToUnlock] = useState<ProjectFolder | null>(null);
 
   // Modals & Action States
   const [activeFolderDetail, setActiveFolderDetail] = useState<ProjectFolder | null>(null);
@@ -83,7 +87,7 @@ export default function Home() {
   const [isClientLoginOpen, setIsClientLoginOpen] = useState(false);
   const [isGatewayLoginOpen, setIsGatewayLoginOpen] = useState(false);
   const [gatewayInitialRole, setGatewayInitialRole] = useState<'admin' | 'client'>('admin');
-  const [isGuestMode, setIsGuestMode] = useState(false);
+  const [isGuestMode, setIsGuestMode] = useState(true);
   const [isDataVaultOpen, setIsDataVaultOpen] = useState(false);
   const [isAIVasthuOpen, setIsAIVasthuOpen] = useState(false);
 
@@ -199,6 +203,19 @@ export default function Home() {
   const isAdmin = session?.role === 'admin' || !isClient;
 
   // Folder Operations
+  const handleOpenFolder = (folder: ProjectFolder) => {
+    if (isAdmin || session?.role === 'admin' || unlockedFolderIds.includes(folder.id)) {
+      setActiveFolderDetail(folder);
+    } else {
+      setFolderToUnlock(folder);
+    }
+  };
+
+  const handleUnlockSuccess = (folder: ProjectFolder) => {
+    setUnlockedFolderIds((prev) => [...prev, folder.id]);
+    setActiveFolderDetail(folder);
+  };
+
   const handleCreateFolder = async (folderData: Omit<ProjectFolder, 'id' | 'createdAt' | 'updatedAt' | 'reviews' | 'chatMessages'> & { files?: ProjectFile[] }) => {
     const newFolder: ProjectFolder = {
       ...folderData,
@@ -486,7 +503,11 @@ export default function Home() {
           activeTab={dashboardTab}
           onSelectTab={(tab) => {
             setDashboardTab(tab);
-            setActiveTab('folders');
+            if (tab === 'media-stream') {
+              setActiveTab('media-stream');
+            } else {
+              setActiveTab('folders');
+            }
             if (tab === 'ai-vasthu') setIsAIVasthuOpen(true);
             if (tab === 'drive-sync') setIsDataVaultOpen(true);
           }}
@@ -506,10 +527,10 @@ export default function Home() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#EEF4FB] dark:bg-[#0B1528]">
 
-          {/* TAB: PORTFOLIO CINEMA (5s Images, Full Video Duration, Custom Playlist) */}
-          {activeTab === 'portfolio' && (
+          {/* TAB: MEDIA STREAM CINEMA (5s Images, Full Video Duration, Add & Delete Provisions) */}
+          {(activeTab === 'media-stream' || activeTab === 'portfolio') && (
             <main className="w-full px-3 sm:px-6 lg:px-8 py-4">
-              <PortfolioShowcaseSection
+              <MediaStreamSection
                 folders={folders}
                 isAdmin={isAdmin}
                 onPreviewFile={(file) => setPreviewFile(file)}
@@ -571,47 +592,20 @@ export default function Home() {
           {activeTab === 'folders' && (
             <div className="flex-1 flex flex-col">
               
-              {/* Hero Banner (Top Animated Media Showcase when on My Cloud) */}
+              {/* LIVE ARCHITECTURAL SHOWCASE TO TOP OF THE PAGE */}
               {dashboardTab === 'my-cloud' && (
-                <div className="w-full px-3 sm:px-6 lg:px-8 pt-4 pb-4 space-y-6">
-                  {/* Embedded Top Sign-In Gateway directly on Home Page Top */}
-                  <HomePageTopSignIn
-                    session={session}
-                    folders={folders}
-                    onClientLoginSuccess={handleClientLoginSuccess}
-                    onAdminLoginSuccess={handleAdminLoginSuccess}
-                    onLogout={handleLogout}
-                    onExplorePublicShowcase={() => {
-                      const el = document.getElementById('public-portfolio-section');
-                      el?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                  />
-
-                  {/* Top Full Screen 3D Images and Walkthrough Videos Animation */}
-                  <HeroAutoCarousel
-                    folders={folders}
-                    isAdmin={isAdmin}
-                    onOpenCreateFolder={() => setIsCreateModalOpen(true)}
-                    onOpenGateway={handleOpenGateway}
-                    onOpenClientLogin={() => handleOpenGateway('client')}
-                    onOpenAdminLogin={() => handleOpenGateway('admin')}
-                    onExploreFolders={() => {
-                      const el = document.getElementById('public-portfolio-section');
-                      el?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    onPreviewFile={(file) => setPreviewFile(file)}
-                  />
-
-                  {/* Public View-Only Portfolio Section with Screen-Size Media Stream and Password Gated Download & Share */}
+                <div className="w-full px-3 sm:px-6 lg:px-8 pt-3 pb-4 space-y-5">
+                  
+                  {/* PUBLIC VIEW-ONLY PORTFOLIO & SCREEN-SIZE MEDIA STREAM */}
                   <div id="public-portfolio-section" className="w-full min-h-[90vh]">
                     <HomePagePortfolio
                       folders={isClient ? visibleFolders : folders}
                       session={session}
                       isAdmin={isAdmin}
                       onPreviewFile={(file) => setPreviewFile(file)}
-                      onOpenFolderDetail={(f) => setActiveFolderDetail(f)}
+                      onOpenFolderDetail={(f) => handleOpenFolder(f)}
                       onOpenClientLogin={() => handleOpenGateway('client')}
-                      onOpenAdminLogin={() => handleOpenGateway('admin')}
+                      onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
                       onShareFolder={(f) => handleShareWhatsApp(f)}
                     />
                   </div>
@@ -629,7 +623,7 @@ export default function Home() {
                     if (tab === 'drive-sync') setIsDataVaultOpen(true);
                   }}
                   isAdmin={isAdmin}
-                  onOpenFolder={(f) => setActiveFolderDetail(f)}
+                  onOpenFolder={(f) => handleOpenFolder(f)}
                   onOpenVisitingCard={(f) => setActiveVisitingCard(f)}
                   onEditFolder={isAdmin ? (f) => setEditingFolder(f) : undefined}
                   onDeleteFolder={isAdmin ? (f) => setFolderToDelete(f) : undefined}
@@ -913,23 +907,26 @@ export default function Home() {
         </div>
       )}
 
-      {/* 6. MAIN ACCESS GATEWAY MODAL (ADMIN / CLIENT SELECTOR & GATEKEEPER) */}
+      {/* 5b. UNLOCK PROJECT VAULT MODAL (User ID: Mobile No + Custom Password) */}
+      <UnlockFolderModal
+        folder={folderToUnlock}
+        isOpen={!!folderToUnlock}
+        onClose={() => setFolderToUnlock(null)}
+        onSuccess={handleUnlockSuccess}
+        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+      />
+
+      {/* 6. MAIN ACCESS GATEWAY MODAL (ADMIN / CLIENT SELECTOR) */}
       <MainLoginGatewayModal
-        isOpen={!session && !isGuestMode ? true : isGatewayLoginOpen}
-        isLockedGateway={!session && !isGuestMode}
+        isOpen={isGatewayLoginOpen}
+        isLockedGateway={false}
         initialRole={gatewayInitialRole}
         folders={folders}
-        onClose={() => {
-          if (!session && !isGuestMode) {
-            setIsGuestMode(true);
-          }
-          setIsGatewayLoginOpen(false);
-        }}
+        onClose={() => setIsGatewayLoginOpen(false)}
         onAdminLoginSuccess={handleAdminLoginSuccess}
         onClientLoginSuccess={handleClientLoginSuccess}
         onCreateFolder={handleCreateFolder}
         onExploreGuest={() => {
-          setIsGuestMode(true);
           setIsGatewayLoginOpen(false);
           setActiveTab('folders');
         }}

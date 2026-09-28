@@ -452,11 +452,11 @@ export const VisitingCardModal: React.FC<VisitingCardModalProps> = ({
                   
                   {/* Center Vertical Cut / Fold Guideline */}
                   <div className="hidden md:flex absolute inset-y-0 left-1/2 -translate-x-1/2 flex-col items-center justify-between pointer-events-none py-2 z-20">
-                    <span className="text-[8.5px] text-emerald-900 font-mono font-black bg-white px-2 py-0.5 rounded shadow-xs border border-emerald-300 tracking-wider">
+                    <span className="text-[8.5px] text-red-600 font-mono font-black bg-white px-2 py-0.5 rounded shadow-xs border border-red-400 tracking-wider">
                       ✂ CUT / FOLD
                     </span>
-                    <div className="w-[1px] h-full border-r border-dashed border-emerald-400" />
-                    <span className="text-[8.5px] text-emerald-900 font-mono bg-white px-1 font-bold">✂</span>
+                    <div className="w-[1px] h-full border-r border-dashed border-red-500" />
+                    <span className="text-[8.5px] text-red-600 font-mono bg-white px-1 font-bold">✂</span>
                   </div>
 
                   {/* SIDE-BY-SIDE EXACT VISITING CARDS (90mm x 55mm Standard Size) */}
@@ -466,82 +466,85 @@ export const VisitingCardModal: React.FC<VisitingCardModalProps> = ({
                     {/* CARD FRONT SIDE: EXACT STANDARD VISITING CARD (90mm x 55mm) */}
                     {/* ======================================================== */}
                     <div 
-                      className="w-[90mm] h-[55mm] min-w-[90mm] max-w-[90mm] min-h-[55mm] max-h-[55mm] shrink-0 rounded-xl overflow-hidden shadow-md flex flex-col justify-between p-3 bg-gradient-to-b from-[#ffffff] via-[#f9faf9] to-[#edf4f0] text-slate-900 border-2 border-[#153e2d] box-border relative"
-                      style={{ width: '90mm', height: '55mm' }}
+                      className="w-[90mm] h-[55mm] min-w-[90mm] max-w-[90mm] min-h-[55mm] max-h-[55mm] shrink-0 rounded-xl overflow-hidden shadow-md flex flex-col justify-between p-3 bg-white text-black border-2 border-red-600 box-border relative"
+                      style={{ width: '90mm', height: '55mm', backgroundColor: '#ffffff', color: '#000000' }}
                     >
-                      {/* Top Brand Accent Ribbon */}
-                      <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#153e2d] via-[#2d6a4f] to-[#d4af37]" />
+                      {/* Top Brand Accent Outline Ribbon */}
+                      <div className="absolute top-0 inset-x-0 h-1 bg-red-600" />
 
                       {/* Header Strip */}
-                      <div className="flex items-start justify-between gap-1.5 border-b border-emerald-900/15 pb-1 pt-0.5">
+                      <div className="flex items-start justify-between gap-1.5 border-b-2 border-red-600/30 pb-1 pt-0.5">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-md bg-gradient-to-br from-[#153e2d] to-[#0d281e] text-amber-300 flex items-center justify-center font-black text-[9px] shrink-0 shadow-xs border border-amber-400/40">
+                          <div className="w-5 h-5 rounded-md bg-red-600 text-white flex items-center justify-center font-black text-[9px] shrink-0 shadow-xs border border-red-700">
                             VA
                           </div>
                           <div>
-                            <h4 className="font-black text-[10px] leading-tight tracking-tight text-[#153e2d]">
+                            <h4 className="font-black text-[10.5px] leading-tight tracking-tight text-black">
                               VASTHUSILPY
                             </h4>
-                            <span className="text-[6px] font-bold block text-emerald-900 uppercase tracking-wider leading-none mt-0.5">
-                              PLANS • 3D DESIGNS • VASTU
+                            <span className="text-[6.5px] font-bold block text-black uppercase tracking-wider leading-none mt-0.5">
+                              PLANS • 3D DESIGNS • VASTU CONSULTATION
                             </span>
                           </div>
                         </div>
 
-                        {/* Category Badge */}
-                        <span className="text-[6px] font-black px-1.5 py-0.5 rounded-full bg-[#153e2d] text-amber-200 border border-amber-400/30 shadow-xs shrink-0 uppercase tracking-tight">
+                        {/* Category Badge with colored outline & black text */}
+                        <span className="text-[6px] font-black px-1.5 py-0.5 rounded-full bg-white text-black border border-red-600 shadow-xs shrink-0 uppercase tracking-tight">
                           {folder.projectCategory || 'Architectural Design'}
                         </span>
                       </div>
 
-                      {/* Center: Vibrant 3D House Elevation Showcase */}
-                      <div className="my-1 relative w-full h-[98px] rounded-lg overflow-hidden shadow-xs border border-[#153e2d]/30 bg-slate-900">
+                      {/* Center: Vibrant Full-Color 3D House Elevation Showcase */}
+                      <div className="my-1 relative w-full h-[98px] rounded-lg overflow-hidden shadow-xs border-2 border-red-600/40 bg-slate-900">
                         <img
                           src={safeImageSrc || rawPreviewImage}
-                          alt="3D Project Preview"
+                          alt="3D Building Photo"
                           className="w-full h-full object-cover"
                           crossOrigin="anonymous"
                         />
                         {/* Overlay Banner */}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-1.5 pt-3.5 text-white">
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-1.5 pt-3.5 text-white">
                           <div className="flex items-center gap-1 mb-0.5">
-                            <span className="text-[5.5px] font-black uppercase tracking-wider px-1 py-0.5 rounded bg-amber-400 text-black">
+                            <span className="text-[5.5px] font-black uppercase tracking-wider px-1 py-0.5 rounded bg-red-600 text-white font-mono">
                               3D ELEVATION VIEW
                             </span>
-                            <span className="text-[6px] font-medium text-amber-200">
+                            <span className="text-[6px] font-bold text-amber-300">
                               Client Vault
                             </span>
                           </div>
                           <h5 className="font-black text-[9.5px] text-white truncate leading-tight drop-shadow-sm">
                             {customProjectTitle}
                           </h5>
-                          <span className="text-[6.5px] text-emerald-200 block truncate font-medium mt-0.5 flex items-center gap-0.5">
-                            <MapPin className="w-2 h-2 text-amber-300 inline shrink-0" />
-                            {customLocation}
+                          <span className="text-[6.5px] text-white block truncate font-bold mt-0.5 flex items-center gap-0.5">
+                            <MapPin className="w-2.5 h-2.5 text-red-400 inline shrink-0" />
+                            <span className="text-white">{customLocation}</span>
                           </span>
                         </div>
                       </div>
 
-                      {/* Architectural Services List */}
-                      <div className="text-[6px] leading-none text-emerald-950 font-bold border-t border-emerald-900/15 pt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
-                        <span className="text-[#153e2d]">• Landscape</span>
-                        <span className="text-[#153e2d]">• Building Plans</span>
-                        <span className="text-[#153e2d]">• 3D Elevation</span>
-                        <span className="text-[#153e2d]">• Vasthu</span>
-                        <span className="text-[#153e2d]">• Survey</span>
-                        <span className="text-[#153e2d]">• Permits</span>
+                      {/* Architectural Services List (Black Letters) */}
+                      <div className="text-[6px] leading-none text-black font-bold border-t border-red-600/20 pt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                        <span className="text-black">• Landscape</span>
+                        <span className="text-black">• Building Plans</span>
+                        <span className="text-black">• 3D Elevation</span>
+                        <span className="text-black">• Vasthu</span>
+                        <span className="text-black">• Survey</span>
+                        <span className="text-black">• Permits</span>
                       </div>
 
-                      {/* Footer Contact Info */}
-                      <div className="pt-0.5 border-t border-emerald-900/15 flex items-center justify-between text-[6.5px] leading-tight font-medium text-slate-800">
+                      {/* Footer: Office Details & Contact Details (in Colour!) */}
+                      <div className="pt-0.5 border-t-2 border-red-600/30 flex items-center justify-between text-[6.5px] leading-tight font-medium">
+                        {/* Office Details in Colour */}
                         <div className="flex items-center gap-0.5 truncate max-w-[170px]">
-                          <MapPin className="w-2 h-2 text-emerald-700 shrink-0" />
-                          <span className="truncate font-bold text-[#153e2d]">
-                            Keralassery, Palakkad
+                          <MapPin className="w-2.5 h-2.5 text-red-600 shrink-0" />
+                          <span className="truncate font-bold text-red-700">
+                            Near Panchayath Office, Keralassery, Palakkad
                           </span>
                         </div>
-                        <div className="font-mono font-bold text-[#153e2d] shrink-0">
-                          📞 9747995961 / 9567627277
+                        {/* Contact Details in Colour */}
+                        <div className="font-mono font-black text-blue-700 shrink-0 flex items-center gap-0.5">
+                          <Phone className="w-2 h-2 text-blue-600 shrink-0" />
+                          <span>9747995961 / 9567627277</span>
                         </div>
                       </div>
 
@@ -551,24 +554,24 @@ export const VisitingCardModal: React.FC<VisitingCardModalProps> = ({
                     {/* CARD BACK SIDE: EXACT STANDARD VISITING CARD (90mm x 55mm) */}
                     {/* ======================================================== */}
                     <div 
-                      className="w-[90mm] h-[55mm] min-w-[90mm] max-w-[90mm] min-h-[55mm] max-h-[55mm] shrink-0 rounded-xl overflow-hidden shadow-md flex flex-col justify-between p-3 bg-gradient-to-b from-[#ffffff] via-[#f9faf9] to-[#edf4f0] text-slate-900 border-2 border-[#153e2d] box-border relative"
-                      style={{ width: '90mm', height: '55mm' }}
+                      className="w-[90mm] h-[55mm] min-w-[90mm] max-w-[90mm] min-h-[55mm] max-h-[55mm] shrink-0 rounded-xl overflow-hidden shadow-md flex flex-col justify-between p-3 bg-white text-black border-2 border-red-600 box-border relative"
+                      style={{ width: '90mm', height: '55mm', backgroundColor: '#ffffff', color: '#000000' }}
                     >
-                      {/* Top Brand Accent Ribbon */}
-                      <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#d4af37] via-[#2d6a4f] to-[#153e2d]" />
+                      {/* Top Brand Accent Outline Ribbon */}
+                      <div className="absolute top-0 inset-x-0 h-1 bg-red-600" />
 
                       {/* Header */}
-                      <div className="flex items-center justify-between border-b border-emerald-900/15 pb-1.5 pt-0.5">
+                      <div className="flex items-center justify-between border-b-2 border-red-600/30 pb-1.5 pt-0.5">
                         <div>
-                          <span className="text-[6.5px] font-black uppercase tracking-widest text-[#153e2d] flex items-center gap-1">
-                            <Lock className="w-2 h-2 text-emerald-700" />
+                          <span className="text-[6.5px] font-black uppercase tracking-widest text-red-600 flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-red-600" />
                             VAULT ACCESS CREDENTIALS
                           </span>
-                          <span className="text-[9.5px] font-black text-slate-900 truncate max-w-[180px] block mt-0.5">
+                          <span className="text-[9.5px] font-black text-black truncate max-w-[180px] block mt-0.5">
                             {customClientName}
                           </span>
                         </div>
-                        <span className="text-[6.5px] px-2 py-0.5 rounded-full bg-[#153e2d] text-amber-300 font-mono font-bold border border-amber-400/30 shadow-xs">
+                        <span className="text-[6.5px] px-2 py-0.5 rounded-full bg-white text-red-700 font-mono font-bold border border-red-600 shadow-xs">
                           VAULT #{folder.id.slice(0, 8).toUpperCase()}
                         </span>
                       </div>
@@ -578,58 +581,62 @@ export const VisitingCardModal: React.FC<VisitingCardModalProps> = ({
                         
                         {/* Credentials Details (7 cols) */}
                         <div className="col-span-7 space-y-1.5 text-[7.5px]">
-                          <div className="p-2 rounded-lg bg-white border border-emerald-900/25 shadow-xs space-y-1">
+                          <div className="p-2 rounded-lg bg-white border-2 border-red-600/30 shadow-xs space-y-1">
+                            {/* User ID - BOLD */}
                             <div className="flex items-center justify-between">
-                              <span className="text-emerald-900 font-bold flex items-center gap-0.5 text-[7px]">
-                                <User className="w-2.5 h-2.5 text-emerald-700" /> User ID:
+                              <span className="text-black font-semibold flex items-center gap-0.5 text-[7px]">
+                                <User className="w-2.5 h-2.5 text-red-600" /> User ID:
                               </span>
-                              <span className="font-mono font-black text-[8.5px] text-slate-900 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                              <span className="font-mono font-black text-[9px] text-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300">
                                 {folder.clientMobile}
                               </span>
                             </div>
 
-                            <div className="flex items-center justify-between border-t border-emerald-100 pt-1">
-                              <span className="text-emerald-900 font-bold flex items-center gap-0.5 text-[7px]">
-                                <Lock className="w-2.5 h-2.5 text-emerald-700" /> Password:
+                            {/* Password - BOLD */}
+                            <div className="flex items-center justify-between border-t border-red-100 pt-1">
+                              <span className="text-black font-semibold flex items-center gap-0.5 text-[7px]">
+                                <Lock className="w-2.5 h-2.5 text-red-600" /> Password:
                               </span>
-                              <span className="font-mono font-black text-[8.5px] text-[#153e2d] bg-amber-50 px-1 py-0.5 rounded border border-amber-200">
+                              <span className="font-mono font-black text-[9px] text-black bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300">
                                 {showPassword ? folder.customPassword : '••••••••'}
                               </span>
                             </div>
                           </div>
 
-                          <div className="text-[6.5px] text-slate-700 leading-tight bg-emerald-50/90 p-1.5 rounded-md border border-emerald-200/60">
-                            <span className="font-bold text-emerald-950">✨ Instant Scan:</span>
-                            <span className="block text-slate-700">Scan QR to view 3D blueprints, elevation designs & permit documents.</span>
+                          <div className="text-[6.5px] text-black leading-tight bg-white p-1.5 rounded-md border border-red-600/20">
+                            <span className="font-black text-red-600">✨ Instant Scan:</span>
+                            <span className="block text-black font-medium">Scan QR to view 3D blueprints, elevation designs & permit documents.</span>
                           </div>
                         </div>
 
-                        {/* Scannable QR Code (5 cols) */}
-                        <div className="col-span-5 flex flex-col items-center justify-center p-1.5 rounded-xl bg-white text-slate-900 border border-[#153e2d] shadow-xs">
+                        {/* Scannable QR Code (5 cols) with colored outline */}
+                        <div className="col-span-5 flex flex-col items-center justify-center p-1.5 rounded-xl bg-white text-black border-2 border-red-600 shadow-xs">
                           <QRCodeSVG
                             value={qrData}
                             size={70}
                             level="H"
                             includeMargin={false}
-                            fgColor="#153e2d"
+                            fgColor="#000000"
                             bgColor="#FFFFFF"
                           />
-                          <div className="mt-1 px-1.5 py-0.5 rounded bg-[#153e2d] text-amber-300 text-[5.5px] font-black tracking-tight text-center uppercase">
+                          <div className="mt-1 px-1.5 py-0.5 rounded bg-red-600 text-white text-[5.5px] font-black tracking-tight text-center uppercase font-mono">
                             SCAN TO ACCESS
                           </div>
                         </div>
 
                       </div>
 
-                      {/* Footer: Chief Architect Deepak C */}
-                      <div className="border-t border-emerald-900/15 pt-1 flex items-center justify-between text-[6.5px] text-slate-800">
+                      {/* Footer: Chief Architect & Office / Contact Details (in Colour!) */}
+                      <div className="border-t-2 border-red-600/30 pt-1 flex items-center justify-between text-[6.5px]">
                         <div>
-                          <span className="font-black text-[#153e2d] block text-[7.5px] leading-tight">Deepak C</span>
-                          <span className="text-slate-600 block text-[5.5px] font-medium leading-none">Chief Architect & Vasthu Consultant</span>
+                          <span className="font-black text-black block text-[7.5px] leading-tight">Deepak C</span>
+                          <span className="text-red-700 block text-[5.5px] font-bold leading-none">Chief Architect & Vasthu Consultant</span>
+                          <span className="text-blue-700 block text-[5.5px] font-mono font-bold leading-none mt-0.5">📞 9747995961 / 9567627277</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-black text-[#153e2d] block text-[7.5px] leading-tight">VASTHUSILPY</span>
-                          <span className="text-slate-600 block text-[5.5px] font-medium leading-none">Pathirippala-Kongad Road, Palakkad</span>
+                          <span className="font-black text-black block text-[7.5px] leading-tight">VASTHUSILPY</span>
+                          <span className="text-red-700 block text-[5.5px] font-bold leading-none">Near Panchayath Office, Keralassery</span>
+                          <span className="text-red-700 block text-[5.5px] font-bold leading-none">Pathirippala-Kongad Road, Palakkad</span>
                         </div>
                       </div>
 

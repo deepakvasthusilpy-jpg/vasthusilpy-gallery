@@ -38,11 +38,19 @@ import {
   Calendar,
   Phone,
   Edit3,
-  AlertTriangle
+  AlertTriangle,
+  Radio,
+  Tv
 } from 'lucide-react';
 import { EditFileModal } from './EditFileModal';
 import { PhotoDocEditorModal } from './PhotoDocEditorModal';
 import { Crop, RotateCw, Sliders } from 'lucide-react';
+import { 
+  getStoredMediaStreamItems, 
+  toggleFolderFileInMediaStream, 
+  addMultipleFolderFilesToMediaStream, 
+  subscribeToMediaStreamUpdates 
+} from '@/lib/mediaStreamStorage';
 
 interface FolderDetailModalProps {
   folder: ProjectFolder;
@@ -134,6 +142,53 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
   // Password Reset State
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // Real-time Media Stream Items tracking
+  const [mediaStreamFileIds, setMediaStreamFileIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const items = getStoredMediaStreamItems([folder]);
+    setMediaStreamFileIds(items.map(i => i.id));
+
+    const unsub = subscribeToMediaStreamUpdates([folder], (updated) => {
+      setMediaStreamFileIds(updated.map(i => i.id));
+    });
+    return unsub;
+  }, [folder]);
+
+  const handleToggleMediaStream = (file: ProjectFile) => {
+    toggleFolderFileInMediaStream(file, folder);
+    const updated = getStoredMediaStreamItems([folder]);
+    setMediaStreamFileIds(updated.map(i => i.id));
+  };
+
+  const handleAddAllToMediaStream = () => {
+    if (!folder.files || folder.files.length === 0) return;
+    const mediaFiles = folder.files.filter(f => 
+      f.type === '3d-render' || f.type === 'photo' || f.type === 'video' || f.category?.includes('3D') || f.category?.includes('Video') || f.fileUrl?.startsWith('data:image') || f.fileUrl?.startsWith('http')
+    );
+    if (mediaFiles.length === 0) {
+      addMultipleFolderFilesToMediaStream(folder.files, folder);
+    } else {
+      addMultipleFolderFilesToMediaStream(mediaFiles, folder);
+    }
+    const updated = getStoredMediaStreamItems([folder]);
+    setMediaStreamFileIds(updated.map(i => i.id));
+  };
+
+  const handleDownloadAllFiles = () => {
+    if (!folder.files || folder.files.length === 0) return;
+    folder.files.forEach((file, index) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = file.fileUrl;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, index * 300);
+    });
+  };
 
   // Auto scroll chat to bottom
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -561,13 +616,35 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
 
           {/* Action on right of tabs */}
           {activeTab === 'files' && (
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="my-2 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Upload New File</span>
-            </button>
+            <div className="flex items-center gap-2 my-2">
+              <button
+                onClick={handleDownloadAllFiles}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
+                title="Download All Drawings & Documents"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <span>Download All Files</span>
+              </button>
+
+              <button
+                onClick={handleAddAllToMediaStream}
+                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
+                title="Broadcast all photos/videos to Public Media Stream Cinema"
+              >
+                <Radio className="w-3.5 h-3.5 text-purple-200" />
+                <span>+ Stream All Media</span>
+              </button>
+
+              {isAdmin && (
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload New File</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -694,64 +771,79 @@ export const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                           <span>{file.isCover ? 'Cover Preview' : 'Set as Cover'}</span>
                         </button>
 
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => setPreviewFile(file)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
-                            title="Preview Attachment"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleMediaStream(file)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer ${
+                            mediaStreamFileIds.includes(file.id)
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-rose-50 hover:text-rose-600'
+                          }`}
+                          title={mediaStreamFileIds.includes(file.id) ? "Active in Public Media Stream Cinema" : "Add to Public Media Stream Cinema"}
+                        >
+                          <Radio className={`w-3.5 h-3.5 ${mediaStreamFileIds.includes(file.id) ? 'animate-pulse' : ''}`} />
+                          <span>{mediaStreamFileIds.includes(file.id) ? 'In Media Stream' : 'Add to Stream'}</span>
+                        </button>
+                      </div>
 
-                          <button
-                            onClick={() => setEditorFile(file)}
-                            className="p-1.5 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
-                            title="Crop, Rotate & Edit Attachment"
-                          >
-                            <Crop className="w-3.5 h-3.5" />
-                          </button>
+                      {/* File Action Buttons */}
+                      <div className="flex items-center justify-end gap-1.5 pt-1 text-xs">
+                        <button
+                          onClick={() => setPreviewFile(file)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+                          title="Preview Attachment"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
 
+                        <button
+                          onClick={() => setEditorFile(file)}
+                          className="p-1.5 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                          title="Crop, Rotate & Edit Attachment"
+                        >
+                          <Crop className="w-3.5 h-3.5" />
+                        </button>
+
+                        <a
+                          href={file.fileUrl}
+                          download={file.name}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                          title="Download"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+
+                        {file.driveWebViewLink && (
                           <a
-                            href={file.fileUrl}
-                            download={file.name}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-                            title="Download"
+                            href={file.driveWebViewLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
+                            title="Open in Google Drive"
                           >
-                            <Download className="w-3.5 h-3.5" />
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </a>
+                        )}
 
-                          {file.driveWebViewLink && (
-                            <a
-                              href={file.driveWebViewLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
-                              title="Open in Google Drive"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => setEditingFile(file)}
+                            className="p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
+                            title="Edit File Attachment"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
-                          {isAdmin && (
-                            <button
-                              onClick={() => setEditingFile(file)}
-                              className="p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
-                              title="Edit File Attachment"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-
-                          {isAdmin && (
-                            <button
-                              onClick={() => setFileToDelete(file)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
-                              title="Delete File"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setFileToDelete(file)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                            title="Delete File"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
 
                     </div>

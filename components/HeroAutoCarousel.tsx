@@ -2,36 +2,34 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { COMPANY_INFO } from '@/lib/sample-data';
 import { ProjectFolder, ProjectFile } from '@/lib/types';
 import { 
+  MediaStreamItem, 
+  getStoredMediaStreamItems, 
+  subscribeToMediaStreamUpdates,
+  saveStoredMediaStreamItems,
+  getDefaultMediaStreamItems 
+} from '@/lib/mediaStreamStorage';
+import { 
   FolderPlus,
-  Phone,
   Folder,
-  User,
-  ShieldCheck,
-  Compass,
-  Sparkles,
-  Layers,
-  FileText,
-  MapPin,
   Lock,
   ChevronLeft,
   ChevronRight,
   Eye,
-  CreditCard,
   Building2,
   Maximize2,
   Minimize2,
   Play,
   Pause,
-  Volume2,
-  VolumeX,
   Video,
   Image as ImageIcon,
-  CheckCircle2,
-  HardDrive,
-  Zap
+  Sparkles,
+  Compass,
+  Film,
+  Plus,
+  RotateCcw,
+  Sliders
 } from 'lucide-react';
 
 interface HeroAutoCarouselProps {
@@ -43,6 +41,7 @@ interface HeroAutoCarouselProps {
   onOpenAdminLogin: () => void;
   onExploreFolders: () => void;
   onPreviewFile?: (file: ProjectFile) => void;
+  onOpenMediaStreamTab?: () => void;
 }
 
 export const HeroAutoCarousel: React.FC<HeroAutoCarouselProps> = ({
@@ -53,129 +52,75 @@ export const HeroAutoCarousel: React.FC<HeroAutoCarouselProps> = ({
   onOpenClientLogin,
   onOpenAdminLogin,
   onExploreFolders,
-  onPreviewFile
+  onPreviewFile,
+  onOpenMediaStreamTab
 }) => {
+  const [streamItems, setStreamItems] = useState<MediaStreamItem[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [progress, setProgress] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Extract all media (images and videos) from attached folders + curated architectural renders
-  const allMediaItems: Array<{
-    id: string;
-    type: 'video' | 'image';
-    title: string;
-    subtitle: string;
-    tag: string;
-    folderName?: string;
-    clientName?: string;
-    mediaUrl: string;
-    badgeColor: string;
-    accentGradient: string;
-    aspectStats: { label: string; val: string }[];
-  }> = [];
+  // Initialize and subscribe strictly to the Media Stream Playlist
+  // ONLY files remaining in the Media Stream tab are allowed to be shown!
+  useEffect(() => {
+    setStreamItems(getStoredMediaStreamItems(folders));
 
-  // Add all files attached in folders that are images or videos
-  folders.forEach((f) => {
-    f.files?.forEach((file) => {
-      const isVid = file.type === 'video' || file.category?.toLowerCase().includes('video');
-      const isImg = file.type === '3d-render' || file.type === 'photo' || file.fileUrl?.startsWith('data:image');
-      if (isVid || isImg) {
-        allMediaItems.push({
-          id: file.id,
-          type: isVid ? 'video' : 'image',
-          title: file.name.replace(/\.[^/.]+$/, ''),
-          subtitle: `Attached in ${f.folderName} • Client: ${f.clientName} (${f.projectLocation || 'Palakkad'})`,
-          tag: isVid ? '3D Video Walkthrough' : '3D Elevation Design',
-          folderName: f.folderName,
-          clientName: f.clientName,
-          mediaUrl: file.fileUrl,
-          badgeColor: isVid ? 'bg-rose-600' : 'bg-indigo-600',
-          accentGradient: isVid 
-            ? 'from-rose-950/95 via-[#0B3B7B]/95 to-slate-950' 
-            : 'from-indigo-950/95 via-[#07244C]/95 to-slate-950',
-          aspectStats: [
-            { label: 'Category', val: file.category || (isVid ? '3D Walkthrough' : '3D Elevation') },
-            { label: 'Resolution', val: '4K Ultra HD' },
-            { label: 'Vault', val: f.folderName }
-          ]
-        });
-      }
+    const unsubscribe = subscribeToMediaStreamUpdates(folders, (updatedItems) => {
+      setStreamItems(updatedItems);
+      setCurrentSlide((prev) => (prev >= updatedItems.length ? Math.max(0, updatedItems.length - 1) : prev));
     });
+
+    return unsubscribe;
+  }, [folders]);
+
+  // Transform stream items into presentation items with visual styling
+  const playlist = streamItems.map((item) => {
+    const isVid = item.type === 'video';
+    return {
+      id: item.id,
+      type: item.type,
+      title: item.name.replace(/\.[^/.]+$/, ''),
+      subtitle: item.folderName 
+        ? `Vault: ${item.folderName} • Client: ${item.clientName || 'Vasthusilpy'} (Palakkad, Kerala)`
+        : 'Vasthusilpy Architectural Studio • Keralassery, Palakkad',
+      tag: item.category || (isVid ? '3D Video Walkthrough' : '3D Elevation Design'),
+      folderName: item.folderName,
+      clientName: item.clientName,
+      mediaUrl: item.fileUrl,
+      fileSize: item.fileSize || (isVid ? '18 MB' : '4.5 MB'),
+      badgeColor: isVid ? 'bg-rose-600' : 'bg-indigo-600',
+      accentGradient: isVid 
+        ? 'from-rose-950/95 via-[#0B3B7B]/95 to-slate-950' 
+        : 'from-indigo-950/95 via-[#07244C]/95 to-slate-950',
+      aspectStats: [
+        { label: 'Category', val: item.category || (isVid ? '3D Walkthrough' : '3D Elevation') },
+        { label: 'Resolution', val: '4K Ultra HD' },
+        { label: 'Playback', val: isVid ? 'Video Stream' : '5s Auto Show' }
+      ]
+    };
   });
 
-  // Default rich architectural showcases if no uploaded media exists
-  const curatedShowcaseItems = [
-    {
-      id: 'showcase-villa-elevation',
-      type: 'image' as const,
-      title: 'Ultra-Realistic 3D Elevation & Luxury Villas',
-      subtitle: 'Photorealistic Kerala contemporary and modern residential exterior elevations, cantilevered slabs, teak louvers, and ambient twilight illumination.',
-      tag: '4K Architectural 3D Visualization',
-      mediaUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&auto=format&fit=crop&q=85',
-      badgeColor: 'bg-indigo-600',
-      accentGradient: 'from-indigo-950/95 via-[#0B3B7B]/95 to-slate-950',
-      aspectStats: [
-        { label: '3D Walkthrough', val: '4K HDR' },
-        { label: 'Architecture', val: 'Contemporary' },
-        { label: 'Vasthu Sync', val: '100% Certified' }
-      ]
-    },
-    {
-      id: 'showcase-3d-walkthrough-video',
-      type: 'video' as const,
-      title: 'Cinematic 3D Video Walkthrough & Virtual Tour',
-      subtitle: 'Dynamic 360-degree camera flythroughs, ambient lighting animations, sun path shadows, and high-fidelity textures.',
-      tag: '4K Cinematic Video Rendering',
-      mediaUrl: 'https://assets.mixkit.co/videos/preview/mixkit-modern-apartment-interior-design-39908-large.mp4',
-      badgeColor: 'bg-rose-600',
-      accentGradient: 'from-rose-950/95 via-[#082852]/95 to-slate-950',
-      aspectStats: [
-        { label: 'Framerate', val: '60 FPS 4K' },
-        { label: 'Virtual Tour', val: 'Cinematic Camera' },
-        { label: 'Lighting', val: 'Ray Tracing' }
-      ]
-    },
-    {
-      id: 'showcase-interior-architecture',
-      type: 'image' as const,
-      title: 'Contemporary Luxury Interior Architecture',
-      subtitle: 'Double-height open living concepts, bespoke wooden acoustic slat paneling, cove lighting, and courtyard integration.',
-      tag: 'Interior Architecture & Lighting',
-      mediaUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1600&auto=format&fit=crop&q=85',
-      badgeColor: 'bg-emerald-600',
-      accentGradient: 'from-emerald-950/95 via-[#07244C]/95 to-slate-950',
-      aspectStats: [
-        { label: 'Space Planning', val: 'Vedic Aligned' },
-        { label: 'Finishes', val: 'Italian Marble & Teak' },
-        { label: 'Acoustics', val: 'Engineered Slat' }
-      ]
-    },
-    {
-      id: 'showcase-traditional-fusion',
-      type: 'image' as const,
-      title: 'Kerala Traditional Fusion & Vasthu Harmony',
-      subtitle: 'Padippura entrances, Charupadi verandas, clay sloped tile roofing, and scientific Brahmasthanam energy clearing.',
-      tag: 'Authentic Vedic Vasthu Vidya',
-      mediaUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1600&auto=format&fit=crop&q=85',
-      badgeColor: 'bg-amber-600',
-      accentGradient: 'from-amber-950/95 via-[#071F3D]/95 to-slate-950',
-      aspectStats: [
-        { label: 'Vasthu Vidya', val: 'Thachu Shastra' },
-        { label: 'Brahmasthanam', val: 'Open Courtyard' },
-        { label: 'Consultant', val: 'Deepak C' }
-      ]
-    }
-  ];
-
-  // Combined playlist
-  const playlist = allMediaItems.length > 0 ? [...allMediaItems, ...curatedShowcaseItems] : curatedShowcaseItems;
-
-  // Auto-progression timer with smooth progress bar
+  // Clamp current slide if items were deleted
   useEffect(() => {
-    if (!isPlaying) return;
-    const duration = 6000; // 6 seconds per slide
+    if (playlist.length === 0) {
+      setCurrentSlide(0);
+    } else if (currentSlide >= playlist.length) {
+      setCurrentSlide(playlist.length - 1);
+    }
+  }, [playlist.length, currentSlide]);
+
+  // Active item in playlist
+  const activeMedia = playlist[currentSlide] || playlist[0];
+
+  // Auto-progression timer with 5-second image interval / video auto advance
+  useEffect(() => {
+    if (!isPlaying || playlist.length <= 1) return;
+
+    setProgress(0);
+    const duration = activeMedia?.type === 'video' ? 8000 : 5000; // 5s for images, 8s for hero video cycle
     const intervalTime = 50;
     const step = (intervalTime / duration) * 100;
 
@@ -190,16 +135,16 @@ export const HeroAutoCarousel: React.FC<HeroAutoCarouselProps> = ({
     }, intervalTime);
 
     return () => clearInterval(timer);
-  }, [isPlaying, playlist.length, currentSlide]);
-
-  const activeMedia = playlist[currentSlide] || playlist[0];
+  }, [isPlaying, playlist.length, currentSlide, activeMedia?.type]);
 
   const handleNext = () => {
+    if (playlist.length === 0) return;
     setProgress(0);
     setCurrentSlide((prev) => (prev + 1) % playlist.length);
   };
 
   const handlePrev = () => {
+    if (playlist.length === 0) return;
     setProgress(0);
     setCurrentSlide((prev) => (prev - 1 + playlist.length) % playlist.length);
   };
@@ -213,6 +158,50 @@ export const HeroAutoCarousel: React.FC<HeroAutoCarouselProps> = ({
       setIsFullscreen(false);
     }
   };
+
+  const handleResetDefaults = () => {
+    const defaults = getDefaultMediaStreamItems(folders);
+    saveStoredMediaStreamItems(defaults);
+    setStreamItems(defaults);
+    setCurrentSlide(0);
+  };
+
+  // If all files were deleted from Media Stream, show empty state with actions
+  if (playlist.length === 0) {
+    return (
+      <div className="w-full rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 p-8 sm:p-12 text-center text-white my-2 shadow-2xl space-y-5">
+        <div className="w-16 h-16 rounded-3xl bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center mx-auto shadow-lg">
+          <Film className="w-8 h-8" />
+        </div>
+        <div className="max-w-md mx-auto space-y-2">
+          <h3 className="text-xl sm:text-2xl font-black tracking-tight">
+            Architectural Media Stream is Empty
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-400">
+            All files were deleted from the Media Stream playlist. You can add new images or videos from the <span className="text-red-400 font-bold">Media Stream</span> tab or restore standard showcase files.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          {onOpenMediaStreamTab && (
+            <button
+              onClick={onOpenMediaStreamTab}
+              className="px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-lg shadow-red-600/30 transition flex items-center gap-2"
+            >
+              <Sliders className="w-4 h-4" />
+              <span>Go to Media Stream Tab</span>
+            </button>
+          )}
+          <button
+            onClick={handleResetDefaults}
+            className="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition flex items-center gap-2"
+          >
+            <RotateCcw className="w-4 h-4 text-emerald-400" />
+            <span>Restore Default Showcase</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -233,6 +222,7 @@ export const HeroAutoCarousel: React.FC<HeroAutoCarouselProps> = ({
         >
           {activeMedia.type === 'video' ? (
             <video
+              ref={videoRef}
               src={activeMedia.mediaUrl}
               autoPlay
               muted
@@ -278,6 +268,11 @@ export const HeroAutoCarousel: React.FC<HeroAutoCarouselProps> = ({
               <Compass className="w-3.5 h-3.5 text-amber-400" />
               VASTHUSILPY • KERALASSERY, PALAKKAD
             </span>
+
+            {/* Stream badge */}
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/40 border border-white/15 text-slate-300">
+              Media Stream Active ({playlist.length} files)
+            </span>
           </div>
 
           {/* Player Controls (Play/Pause, Fullscreen, Slides) */}
@@ -286,7 +281,7 @@ export const HeroAutoCarousel: React.FC<HeroAutoCarouselProps> = ({
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               className="p-1.5 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition"
-              title={isPlaying ? 'Pause Animated Showcase' : 'Play Animated Showcase'}
+              title={isPlaying ? 'Pause Live Showcase' : 'Play Live Showcase'}
             >
               {isPlaying ? <Pause className="w-4 h-4 text-amber-300" /> : <Play className="w-4 h-4 text-emerald-400" />}
             </button>
@@ -333,6 +328,11 @@ export const HeroAutoCarousel: React.FC<HeroAutoCarouselProps> = ({
               transition={{ duration: 0.4 }}
               className="space-y-2"
             >
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-red-600/30 text-red-300 border border-red-500/40">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Live Architectural Showcase</span>
+              </div>
+
               <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight drop-shadow-md">
                 {activeMedia.title}
               </h1>

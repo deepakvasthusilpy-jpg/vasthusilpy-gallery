@@ -104,7 +104,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    6-Digit Authenticator Code (TOTP)
+                    6-Digit 2FA Code or Admin PIN (9747)
                   </label>
                   <button
                     type="button"
@@ -118,19 +118,17 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
+                    type="password"
+                    maxLength={10}
                     value={totpCode}
-                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Enter 6-digit code"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono tracking-widest text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1D70E2]"
+                    onChange={(e) => setTotpCode(e.target.value)}
+                    placeholder="Enter PIN (e.g. 9747) or 6-digit TOTP"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1D70E2]"
                     required
-                    autoComplete="one-time-code"
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Open Google Authenticator or Microsoft Authenticator on your phone.
+                  Enter master PIN (9747) or code from Google Authenticator.
                 </p>
               </div>
 

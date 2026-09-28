@@ -5,6 +5,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ProjectFolder, ProjectFile } from '@/lib/types';
 import { AuthSession } from '@/lib/storage';
 import { ADMIN_CONFIG } from '@/lib/auth';
+import {
+  MediaStreamItem,
+  getStoredMediaStreamItems,
+  subscribeToMediaStreamUpdates
+} from '@/lib/mediaStreamStorage';
 import { 
   Folder, 
   FileText, 
@@ -120,69 +125,69 @@ export const HomePagePortfolio: React.FC<HomePagePortfolioProps> = ({
     'Building Permit'
   ];
 
-  // Flatten all media across all folders into a dynamic stream
+  // Media stream synchronized state
+  const [streamItems, setStreamItems] = useState<MediaStreamItem[]>([]);
+
+  // Subscribe to media stream updates (so deleted files immediately vanish here as well)
+  useEffect(() => {
+    setStreamItems(getStoredMediaStreamItems(folders));
+
+    const unsubscribe = subscribeToMediaStreamUpdates(folders, (updated) => {
+      setStreamItems(updated);
+      setActiveMediaIndex((prev) => (prev >= updated.length ? Math.max(0, updated.length - 1) : prev));
+    });
+
+    return unsubscribe;
+  }, [folders]);
+
+  // Flatten all media strictly from the authoritative Media Stream playlist
   const allMediaItems: FlattenedMediaItem[] = useMemo(() => {
     const items: FlattenedMediaItem[] = [];
 
-    folders.forEach((folder) => {
-      folder.files?.forEach((file) => {
-        const isVid = file.type === 'video' || file.category?.toLowerCase().includes('video') || file.name.endsWith('.mp4') || file.name.endsWith('.mov') || file.name.endsWith('.webm');
-        const isImg = file.type === '3d-render' || file.type === 'photo' || file.fileUrl?.startsWith('data:image') || file.name.match(/\.(jpg|jpeg|png|webp|avif|gif)$/i);
+    streamItems.forEach((streamItem) => {
+      // Find matching folder or construct display folder
+      const matchedFolder = folders.find((f) => f.folderName === streamItem.folderName || f.files.some((fi) => fi.id === streamItem.id));
+      const fallbackFolder: ProjectFolder = matchedFolder || {
+        id: 'vault_' + streamItem.id,
+        folderName: streamItem.folderName || 'Vasthusilpy Architectural Studio',
+        clientName: streamItem.clientName || 'Vasthusilpy Portfolio',
+        clientMobile: '9747995961',
+        customPassword: 'vault',
+        projectCategory: streamItem.category,
+        projectLocation: 'Keralassery, Palakkad',
+        createdAt: streamItem.addedAt || '2026-03-20',
+        updatedAt: streamItem.addedAt || '2026-03-20',
+        files: [],
+        reviews: [],
+        chatMessages: []
+      };
 
-        if (isVid || isImg) {
-          items.push({
-            id: file.id,
-            name: file.name,
-            fileUrl: file.fileUrl,
-            fileSize: file.fileSize,
-            type: isVid ? 'video' : 'image',
-            category: file.category || (isVid ? '3D Walkthrough Video' : '3D Elevation Design'),
-            folder,
-            file
-          });
-        }
+      const matchedFile = matchedFolder?.files?.find((fi) => fi.id === streamItem.id);
+      const fallbackFile: ProjectFile = matchedFile || {
+        id: streamItem.id,
+        name: streamItem.name,
+        fileUrl: streamItem.fileUrl,
+        fileSize: streamItem.fileSize || '4.5 MB',
+        uploadedAt: streamItem.addedAt || '2026-03-20',
+        uploadedBy: 'Deepak C',
+        type: streamItem.type === 'video' ? 'video' : '3d-render',
+        category: streamItem.category
+      };
+
+      items.push({
+        id: streamItem.id,
+        name: streamItem.name,
+        fileUrl: streamItem.fileUrl,
+        fileSize: streamItem.fileSize || '4.5 MB',
+        type: streamItem.type === 'video' ? 'video' : 'image',
+        category: streamItem.category,
+        folder: fallbackFolder,
+        file: fallbackFile
       });
     });
 
-    // If no files attached yet in sample folders, provide high quality architectural showcases
-    if (items.length === 0) {
-      const sampleMedia: FlattenedMediaItem[] = [
-        {
-          id: 'demo-1',
-          name: 'Palakkad Luxury Contemporary Villa Elevation.jpg',
-          fileUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&auto=format&fit=crop&q=80',
-          fileSize: '4.8 MB',
-          type: 'image',
-          category: '3D Elevation Design',
-          folder: folders[0] || { id: 'sample-1', folderName: 'Palakkad Modern Villa', clientName: 'Vasthusilpy Portfolio', clientMobile: '9747995961', files: [] } as any,
-          file: { id: 'demo-1', name: 'Palakkad Luxury Villa Elevation.jpg', fileUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&auto=format&fit=crop&q=80', fileSize: '4.8 MB', uploadedAt: '2026-03-20', uploadedBy: 'Deepak C', type: '3d-render', category: '3D Design' }
-        },
-        {
-          id: 'demo-2',
-          name: 'Traditional Kerala Nalukettu Courtyard 3D View.jpg',
-          fileUrl: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&auto=format&fit=crop&q=80',
-          fileSize: '5.2 MB',
-          type: 'image',
-          category: '3D Design',
-          folder: folders[0] || { id: 'sample-2', folderName: 'Kerala Heritage Nalukettu', clientName: 'Vasthusilpy Portfolio', clientMobile: '9747995961', files: [] } as any,
-          file: { id: 'demo-2', name: 'Traditional Kerala Nalukettu.jpg', fileUrl: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&auto=format&fit=crop&q=80', fileSize: '5.2 MB', uploadedAt: '2026-03-21', uploadedBy: 'Deepak C', type: '3d-render', category: '3D Design' }
-        },
-        {
-          id: 'demo-3',
-          name: 'Modern Commercial Complex & CAD Blueprint.jpg',
-          fileUrl: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1600&auto=format&fit=crop&q=80',
-          fileSize: '6.1 MB',
-          type: 'image',
-          category: 'Building Plans',
-          folder: folders[0] || { id: 'sample-3', folderName: 'Commercial Complex', clientName: 'Vasthusilpy Portfolio', clientMobile: '9747995961', files: [] } as any,
-          file: { id: 'demo-3', name: 'Modern Commercial Complex.jpg', fileUrl: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1600&auto=format&fit=crop&q=80', fileSize: '6.1 MB', uploadedAt: '2026-03-22', uploadedBy: 'Deepak C', type: '3d-render', category: 'Building Plans' }
-        }
-      ];
-      return sampleMedia;
-    }
-
     return items;
-  }, [folders]);
+  }, [streamItems, folders]);
 
   // Master Slideshow timer for dynamic changing ("every image & video comes and goes automatically")
   useEffect(() => {
